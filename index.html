@@ -12,42 +12,27 @@
        display:flex;flex-direction:column;align-items:center;padding:12px;min-height:100vh}
   h2{color:#0ff;margin-bottom:10px;font-size:1.1rem}
 
-  #ws-row{display:flex;gap:8px;width:100%;max-width:440px;margin-bottom:6px}
+  #ws-row{display:flex;gap:8px;width:100%;max-width:440px;margin-bottom:10px}
   #ws-input{flex:1;padding:9px;border-radius:8px;border:1px solid #555;
             background:#222;color:#fff;font-size:0.95rem}
   #ws-btn{padding:9px 14px;border-radius:8px;border:none;
           background:#ffa500;color:#000;font-weight:bold;cursor:pointer}
-
-  #gps-bar{width:100%;max-width:440px;font-size:0.78rem;color:#666;
-           padding:4px 0;margin-bottom:6px;min-height:20px}
-
-  #ws-status{width:100%;max-width:440px;font-size:0.8rem;color:#888;margin-bottom:8px}
+  #ws-status{font-size:0.8rem;color:#888;margin-bottom:8px}
 
   #dest-row{display:flex;gap:8px;width:100%;max-width:440px;margin-bottom:10px}
   #dest-input{flex:1;padding:9px;border-radius:8px;border:1px solid #0ff;
               background:#222;color:#fff;font-size:0.95rem}
   button.go{padding:9px 16px;border-radius:8px;border:none;
             background:#0ff;color:#000;font-weight:bold;cursor:pointer}
-  button.stop-btn{padding:9px 14px;border-radius:8px;border:none;
-                  background:#f44;color:#fff;font-weight:bold;cursor:pointer;display:none}
+  button.stop{padding:9px 14px;border-radius:8px;border:none;
+              background:#f44;color:#fff;font-weight:bold;cursor:pointer;display:none}
 
-  #confirm-panel{display:none;width:100%;max-width:440px;
-                 background:#0d1b2a;border-radius:12px;
-                 padding:14px;margin-bottom:10px}
-  #confirm-panel p{font-size:0.82rem;color:#aaa;margin-bottom:10px;line-height:1.5}
-  #confirm-panel .dest-name{font-size:0.95rem;color:#fff;font-weight:bold;margin-bottom:10px}
-  .confirm-btns{display:flex;gap:10px}
-  .btn-yes{flex:1;padding:10px;border-radius:8px;border:none;
-           background:#0f0;color:#000;font-weight:bold;font-size:1rem;cursor:pointer}
-  .btn-no{flex:1;padding:10px;border-radius:8px;border:none;
-          background:#555;color:#fff;font-weight:bold;font-size:0.9rem;cursor:pointer}
-
-  #map{width:100%;max-width:440px;height:200px;border-radius:10px;
+  #map{width:100%;max-width:440px;height:220px;border-radius:10px;
        border:1px solid #333;margin-bottom:10px;display:none}
 
   #status{width:100%;max-width:440px;background:#1a1a2e;border-radius:8px;
-          padding:10px;margin-bottom:10px;font-size:0.85rem;color:#aaa;
-          min-height:36px;display:none}
+          padding:10px;margin-bottom:10px;font-size:0.85rem;color:#aaa;min-height:40px}
+  #status b{color:#0ff}
 
   #nav-panel{width:100%;max-width:440px;background:#0d1b2a;border-radius:12px;
              padding:16px;display:none;flex-direction:column;align-items:center;gap:8px}
@@ -68,33 +53,24 @@
 <body>
 <h2>🏍️ GPS Moto Display</h2>
 
+<!-- Conexión WebSocket al ESP32 -->
 <div id="ws-row">
   <input id="ws-input" type="text" placeholder="IP del ESP32 ej: 192.168.1.105"/>
   <button id="ws-btn" onclick="connectWS()">Conectar</button>
 </div>
 <div id="ws-status">⚡ Sin conectar al display</div>
 
-<div id="gps-bar">📡 Obteniendo GPS...</div>
-
+<!-- Buscador de destino -->
 <div id="dest-row">
-  <input id="dest-input" type="text" placeholder="¿A dónde vas?"
-         onkeydown="if(event.key==='Enter') searchDest()"/>
+  <input id="dest-input" type="text" placeholder="¿A dónde vas? Dirección o lugar"/>
   <button class="go" onclick="searchDest()">Buscar</button>
-  <button class="stop-btn" id="stop-btn" onclick="stopNav()">✕ Parar</button>
+  <button class="stop" id="stop-btn" onclick="stopNav()">✕</button>
 </div>
 
+<!-- Mapa de confirmación -->
 <div id="map"></div>
 
-<div id="confirm-panel">
-  <div class="dest-name" id="confirm-name"></div>
-  <p id="confirm-addr"></p>
-  <div class="confirm-btns">
-    <button class="btn-yes" onclick="startNav()">✅ Sí, iniciar ruta</button>
-    <button class="btn-no"  onclick="cancelSearch()">✏️ Cambiar destino</button>
-  </div>
-</div>
-
-<div id="status"></div>
+<div id="status">📡 Esperando GPS...</div>
 
 <div id="nav-panel">
   <div id="arrow-box">⬆️</div>
@@ -109,13 +85,14 @@
 <div id="step-list"></div>
 
 <script>
+// ── Estado ─────────────────────────────────────────────────
 let ws        = null;
 let userLat   = null, userLon = null;
 let destLat   = null, destLon = null;
 let steps     = [], currentStep = 0;
 let navActive = false;
 let map       = null, userMarker = null, destMarker = null, routeLine = null;
-let interpLayer = null;
+let destConfirmed = false;
 
 const ARROWS = {
   'turn-left':'⬅️','turn-right':'➡️','turn-slight-left':'↖️',
@@ -125,300 +102,135 @@ const ARROWS = {
 };
 const MANEUVER_ES = {
   'turn-left':'Gira a la izquierda','turn-right':'Gira a la derecha',
-  'turn-slight-left':'Gira levemente izquierda','turn-slight-right':'Gira levemente derecha',
+  'turn-slight-left':'Gira ligeramente izquierda','turn-slight-right':'Gira ligeramente derecha',
   'turn-sharp-left':'Giro cerrado izquierda','turn-sharp-right':'Giro cerrado derecha',
   'uturn':'Giro en U','roundabout':'Entra a la rotonda',
   'straight':'Continúa recto','depart':'Inicia recorrido',
   'arrive':'¡Llegaste!','exit':'Toma la salida','merge':'Incorpora al carril'
 };
 
-// ── WebSocket ────────────────────────────────────────────────
+// ── WebSocket ───────────────────────────────────────────────
 function connectWS() {
   const ip = document.getElementById('ws-input').value.trim();
-  if (!ip) { setWS('⚠️ Escribe la IP'); return; }
+  if (!ip) { setWSStatus('⚠️ Escribe la IP del ESP32'); return; }
   if (ws) ws.close();
   ws = new WebSocket('ws://' + ip + ':81');
-  ws.onopen    = () => setWS('✅ Conectado · ' + ip);
-  ws.onclose   = () => setWS('🔴 Desconectado');
-  ws.onerror   = () => setWS('❌ Error — verifica IP y WiFi');
+  ws.onopen    = () => setWSStatus('✅ Conectado al display · ' + ip);
+  ws.onclose   = () => setWSStatus('🔴 Desconectado del display');
+  ws.onerror   = () => setWSStatus('❌ Error de conexión — verifica IP y WiFi');
   ws.onmessage = e  => console.log('ESP32:', e.data);
 }
-function setWS(t){ document.getElementById('ws-status').textContent = t; }
+function setWSStatus(t) { document.getElementById('ws-status').textContent = t; }
 
 function sendToDisplay(maneuver, street, distance, speed, eta) {
-  if (ws && ws.readyState === WebSocket.OPEN)
+  if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({maneuver, street, distance, speed, eta}));
+  }
 }
 
-// ── GPS ──────────────────────────────────────────────────────
+// ── GPS ─────────────────────────────────────────────────────
 function startGPS() {
-  if (!navigator.geolocation) {
-    document.getElementById('gps-bar').textContent = '❌ GPS no disponible';
-    return;
-  }
+  if (!navigator.geolocation) { setStatus('❌ GPS no disponible'); return; }
   navigator.geolocation.watchPosition(
     pos => {
       userLat = pos.coords.latitude;
       userLon = pos.coords.longitude;
-      const spd = pos.coords.speed
-        ? Math.round(pos.coords.speed * 3.6) + ' km/h' : '';
-      document.getElementById('gps-bar').textContent =
-        '📍 ' + userLat.toFixed(5) + ', ' + userLon.toFixed(5) +
-        (spd ? '  •  ' + spd : '');
-      if (map && userMarker) userMarker.setLatLng([userLat, userLon]);
-      if (navActive) updateStep(spd);
+      const spd = pos.coords.speed ? Math.round(pos.coords.speed * 3.6) + ' km/h' : '';
+      if (map && userMarker) {
+        userMarker.setLatLng([userLat, userLon]);
+      }
+      if (!navActive) {
+        setStatus(`📍 GPS OK — <b>${userLat.toFixed(5)}, ${userLon.toFixed(5)}</b>`);
+      } else {
+        updateStep(spd);
+      }
     },
-    err => {
-      document.getElementById('gps-bar').textContent = '❌ GPS: ' + err.message;
-    },
+    err => setStatus('❌ GPS: ' + err.message),
     {enableHighAccuracy:true, maximumAge:2000, timeout:10000}
   );
 }
 
-// ── Mapa ─────────────────────────────────────────────────────
+// ── Mapa Leaflet ────────────────────────────────────────────
 function initMap(lat, lon) {
-  const el = document.getElementById('map');
-  el.style.display = 'block';
+  const mapEl = document.getElementById('map');
+  mapEl.style.display = 'block';
   if (!map) {
     map = L.map('map').setView([lat, lon], 15);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-      {attribution:'© OpenStreetMap'}).addTo(map);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap'
+    }).addTo(map);
   }
-  if (userLat && !userMarker) {
-    userMarker = L.circleMarker([userLat, userLon],
-      {radius:8, color:'#0ff', fillColor:'#0ff', fillOpacity:0.9})
-      .addTo(map).bindPopup('Tu ubicación');
+  if (userMarker) userMarker.remove();
+  if (userLat) {
+    userMarker = L.circleMarker([userLat||lat, userLon||lon], {
+      radius:8, color:'#0ff', fillColor:'#0ff', fillOpacity:0.9
+    }).addTo(map).bindPopup('Tu ubicación');
   }
 }
 
 function showDestOnMap(lat, lon, name) {
   if (!map) initMap(lat, lon);
   if (destMarker) destMarker.remove();
-  destMarker = L.marker([lat, lon]).addTo(map)
-    .bindPopup('<b>' + name + '</b>').openPopup();
-  const b = userLat
+  destMarker = L.marker([lat, lon])
+    .addTo(map)
+    .bindPopup('<b>' + name + '</b>')
+    .openPopup();
+  const bounds = userLat
     ? L.latLngBounds([[userLat,userLon],[lat,lon]])
-    : L.latLngBounds([[lat,lon],[lat+0.005,lon+0.005]]);
-  map.fitBounds(b, {padding:[30,30]});
+    : L.latLngBounds([[lat,lon],[lat+0.01,lon+0.01]]);
+  map.fitBounds(bounds, {padding:[30,30]});
 }
 
 function showRouteOnMap(coords) {
   if (routeLine) routeLine.remove();
-  routeLine = L.polyline(coords,
-    {color:'#0ff', weight:4, opacity:0.8}).addTo(map);
+  routeLine = L.polyline(coords, {color:'#0ff', weight:4, opacity:0.8}).addTo(map);
   map.fitBounds(routeLine.getBounds(), {padding:[20,20]});
 }
 
-function showInterpolationOnMap(pt1, pt2, label) {
-  if (!map) return;
-  if (interpLayer) interpLayer.remove();
-  interpLayer = L.layerGroup([
-    L.polyline([[pt1.lat, pt1.lon],[pt2.lat, pt2.lon]],
-      { color:'#ffa500', weight:3, dashArray:'6,4', opacity:0.7 }),
-    L.circleMarker([pt1.lat, pt1.lon],
-      { radius:5, color:'#ffa500', fillColor:'#ffa500', fillOpacity:0.8 })
-      .bindTooltip('Esquina ' + label),
-    L.circleMarker([pt2.lat, pt2.lon],
-      { radius:5, color:'#ffa500', fillColor:'#ffa500', fillOpacity:0.8 }),
-  ]).addTo(map);
-}
-
-// ── Nominatim helper ─────────────────────────────────────────
-async function nominatimSearch(q) {
-  const url = 'https://nominatim.openstreetmap.org/search?q='
-    + encodeURIComponent(q)
-    + '&format=json&limit=1&countrycodes=co';
-  const res = await fetch(url, { headers: { 'Accept-Language': 'es' } });
-  return res.json();
-}
-
-// ── Interpolación lineal entre dos coordenadas ───────────────
-function interpolate(pt1, pt2, metros) {
-  const R    = 6371000;
-  const dLat = (pt2.lat - pt1.lat) * Math.PI / 180;
-  const dLon = (pt2.lon - pt1.lon) * Math.PI / 180;
-  const dist = Math.sqrt(
-    (dLat * R) * (dLat * R) +
-    (dLon * R * Math.cos(pt1.lat * Math.PI / 180)) *
-    (dLon * R * Math.cos(pt1.lat * Math.PI / 180))
-  );
-  const t = Math.min(1, Math.max(0, metros / dist));
-  return {
-    lat: pt1.lat + t * (pt2.lat - pt1.lat),
-    lon: pt1.lon + t * (pt2.lon - pt1.lon),
-  };
-}
-
-// ── Normalizador de direcciones colombianas ──────────────────
-// Retorna: { tipoVia, numVia, numCruce, metros, hasMetros } o { raw }
-function normalizeAddress(raw) {
-  let s = raw.trim();
-
-  // 1. Expandir abreviaturas
-  const VIA = {
-    'CRA':'Carrera','CR':'Carrera','KR':'Carrera','CRERA':'Carrera',
-    'CRA.':'Carrera','CR.':'Carrera','KR.':'Carrera',
-    'CLL':'Calle','CL':'Calle','CLLE':'Calle','CLL.':'Calle','CL.':'Calle',
-    'AV':'Avenida','AVD':'Avenida','AVE':'Avenida','AV.':'Avenida',
-    'AK':'Avenida Carrera','AC':'Avenida Calle',
-    'TV':'Transversal','TRANS':'Transversal','TV.':'Transversal',
-    'DG':'Diagonal','DIAG':'Diagonal','DG.':'Diagonal',
-    'CIR':'Circular','CIRC':'Circular',
-  };
-  s = s.replace(/^([\w.]+)(\s|$)/i, (_, abbr, sep) => {
-    return (VIA[abbr.toUpperCase()] || abbr) + sep;
-  });
-
-  // 2. Formato completo: <vía> <numVia>[letra][bis] # <cruce>[letra] - <metros>
-  //    Ejemplos: Carrera 94G #85-91   Calle 10 Bis #15A-20
-  const reFull = /^([\wáéíóúÁÉÍÓÚ\s.]+?)\s+(\d+[a-zA-Z]?(?:\s?[Bb][Ii][Ss])?)\s*[#Nn][Oo]?\.?\s*(\d+[a-zA-Z]?)\s*[-–]\s*(\d+)/i;
-  const mFull  = s.match(reFull);
-  if (mFull) {
-    return {
-      tipoVia:   mFull[1].trim(),
-      numVia:    mFull[2].trim().replace(/\s/g, ''),
-      numCruce:  mFull[3].trim(),
-      metros:    parseInt(mFull[4]),
-      hasMetros: true,
-    };
-  }
-
-  // 3. Sin metros: <vía> <numVia> # <cruce>
-  const reParcial = /^([\wáéíóúÁÉÍÓÚ\s.]+?)\s+(\d+[a-zA-Z]?)\s*[#Nn][Oo]?\.?\s*(\d+[a-zA-Z]?)/i;
-  const mParcial  = s.match(reParcial);
-  if (mParcial) {
-    return {
-      tipoVia:   mParcial[1].trim(),
-      numVia:    mParcial[2].trim(),
-      numCruce:  mParcial[3].trim(),
-      metros:    0,
-      hasMetros: false,
-    };
-  }
-
-  // 4. Formato no reconocido — búsqueda literal
-  return { raw: s };
-}
-
-// ── Geocodificar dirección colombiana con interpolación ──────
-async function geocodeColombiana(parsed, ciudad = 'Bogotá') {
-
-  // Sin parsear → query directo a Nominatim
-  if (parsed.raw) {
-    const data = await nominatimSearch(parsed.raw + ', ' + ciudad + ', Colombia');
-    if (data.length) return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon), label: parsed.raw, exact: false };
-    throw new Error('Dirección no encontrada: ' + parsed.raw);
-  }
-
-  const { tipoVia, numVia, numCruce, metros, hasMetros } = parsed;
-  const label = `${tipoVia} ${numVia} #${numCruce}${hasMetros ? '-' + metros : ''}`;
-
-  // Número del cruce siguiente para interpolar
-  const numCruceBase = parseInt(numCruce);
-  const letraCruce   = numCruce.replace(/\d/g, '');
-  const numCruceSig  = numCruceBase + 1;
-
-  const q1 = `${tipoVia} ${numVia} con ${numCruce}${letraCruce}, ${ciudad}, Colombia`;
-  const q2 = `${tipoVia} ${numVia} con ${numCruceSig}, ${ciudad}, Colombia`;
-
-  let pt1 = null, pt2 = null;
-
-  const data1 = await nominatimSearch(q1);
-  if (data1.length) pt1 = { lat: parseFloat(data1[0].lat), lon: parseFloat(data1[0].lon) };
-
-  // Si no hay metros, devolver la esquina directamente
-  if (!hasMetros || metros === 0) {
-    if (pt1) return { lat: pt1.lat, lon: pt1.lon, label, exact: false };
-    throw new Error(`No se encontró: ${q1}`);
-  }
-
-  // Buscar cruce siguiente para interpolación
-  const data2 = await nominatimSearch(q2);
-  if (data2.length) pt2 = { lat: parseFloat(data2[0].lat), lon: parseFloat(data2[0].lon) };
-
-  // ── Ambos puntos encontrados → interpolar ────────────────
-  if (pt1 && pt2) {
-    const interp = interpolate(pt1, pt2, metros);
-    return { lat: interp.lat, lon: interp.lon, label, exact: true, pt1, pt2 };
-  }
-
-  // Solo esquina principal
-  if (pt1) {
-    return {
-      lat: pt1.lat, lon: pt1.lon, label, exact: false,
-      nota: 'Posición en la esquina — cruce siguiente no encontrado en el mapa'
-    };
-  }
-
-  // Fallback: solo vía principal sin número de cruce
-  const qFallback = `${tipoVia} ${numVia}, ${ciudad}, Colombia`;
-  const dataFb    = await nominatimSearch(qFallback);
-  if (dataFb.length) {
-    return {
-      lat: parseFloat(dataFb[0].lat), lon: parseFloat(dataFb[0].lon),
-      label: `${tipoVia} ${numVia}`, exact: false,
-      nota: 'Solo se encontró la vía principal'
-    };
-  }
-
-  throw new Error(`No se encontró ninguna referencia para: ${tipoVia} ${numVia}`);
-}
-
-// ── Buscar destino (función única) ───────────────────────────
+// ── Geocodificación ─────────────────────────────────────────
 async function searchDest() {
-  const raw = document.getElementById('dest-input').value.trim();
-  if (!raw) { setStatus('⚠️ Escribe un destino', true); return; }
-
-  hideConfirmPanel();
-  setStatus('🔍 Buscando dirección...', true);
+  const q = document.getElementById('dest-input').value.trim();
+  if (!q) { setStatus('⚠️ Escribe un destino'); return; }
+  setStatus('🔍 Buscando <b>' + q + '</b>...');
+  destConfirmed = false;
 
   try {
-    const parsed = normalizeAddress(raw);
-    const result = await geocodeColombiana(parsed);
+    const url = 'https://nominatim.openstreetmap.org/search?q='
+      + encodeURIComponent(q) + '&format=json&limit=1&countrycodes=co';
+    const res  = await fetch(url, {headers:{'Accept-Language':'es'}});
+    const data = await res.json();
+    if (!data.length) throw new Error('Dirección no encontrada');
 
-    destLat = result.lat;
-    destLon = result.lon;
+    destLat = parseFloat(data[0].lat);
+    destLon = parseFloat(data[0].lon);
+    const nombre = data[0].display_name;
 
-    const exactMsg = result.exact
-      ? '<small style="color:#0f0">✅ Posición interpolada con el número exacto</small>'
-      : result.nota
-        ? `<small style="color:#fa0">⚠️ ${result.nota}</small>`
-        : '<small style="color:#aaa">📍 Esquina de referencia encontrada</small>';
+    if (!map) initMap(destLat, destLon);
+    else showDestOnMap(destLat, destLon, nombre);
+    showDestOnMap(destLat, destLon, nombre);
 
-    showDestOnMap(destLat, destLon, result.label);
-
-    if (result.pt1 && result.pt2) {
-      showInterpolationOnMap(result.pt1, result.pt2, result.label);
-    }
-
-    setStatus('', false);
-    document.getElementById('confirm-name').textContent = '📌 ' + result.label;
-    document.getElementById('confirm-addr').innerHTML   = exactMsg;
-    document.getElementById('confirm-panel').style.display = 'block';
-
+    setStatus(`📌 ¿Es este el lugar correcto?<br>
+      <small style="color:#aaa">${nombre.substring(0,80)}...</small><br><br>
+      <button onclick="startNav()" style="
+        padding:8px 20px;background:#0f0;color:#000;border:none;
+        border-radius:8px;font-weight:bold;cursor:pointer;font-size:1rem">
+        ✅ Sí, iniciar ruta
+      </button>
+      &nbsp;
+      <button onclick="document.getElementById('dest-input').focus()" style="
+        padding:8px 16px;background:#555;color:#fff;border:none;
+        border-radius:8px;cursor:pointer;font-size:0.9rem">
+        ✏️ Cambiar
+      </button>`);
   } catch(e) {
-    setStatus('❌ ' + e.message
-      + '<br><small style="color:#888">Prueba: "Carrera 94G #85-91" o "Cll 10 #15-20"</small>', true);
+    setStatus('❌ ' + e.message);
   }
 }
 
-function hideConfirmPanel() {
-  document.getElementById('confirm-panel').style.display = 'none';
-}
-
-function cancelSearch() {
-  hideConfirmPanel();
-  document.getElementById('dest-input').value = '';
-  document.getElementById('dest-input').focus();
-}
-
-// ── Calcular y navegar ruta ───────────────────────────────────
+// ── Calcular ruta ───────────────────────────────────────────
 async function startNav() {
-  if (!userLat) { setStatus('⚠️ Esperando GPS...', true); return; }
-
-  hideConfirmPanel();
-  setStatus('🛣️ Calculando ruta...', true);
-
+  if (!userLat) { setStatus('⚠️ Esperando GPS...'); return; }
+  setStatus('🛣️ Calculando ruta...');
   try {
     const url = 'https://router.project-osrm.org/route/v1/driving/'
       + userLon + ',' + userLat + ';'
@@ -431,12 +243,15 @@ async function startNav() {
     const route = data.routes[0];
     steps = [];
     const mapCoords = [];
-    for (const c of route.geometry.coordinates)
+
+    // Extraer coordenadas para la polilínea
+    for (const c of route.geometry.coordinates) {
       mapCoords.push([c[1], c[0]]);
+    }
     showRouteOnMap(mapCoords);
 
-    for (const leg of route.legs)
-      for (const step of leg.steps)
+    for (const leg of route.legs) {
+      for (const step of leg.steps) {
         steps.push({
           maneuver: normalizeManeuver(step),
           street:   step.name || 'Sin nombre',
@@ -444,12 +259,13 @@ async function startNav() {
           duration: step.duration,
           location: step.maneuver.location
         });
+      }
+    }
 
     currentStep = 0;
     navActive   = true;
-
-    document.getElementById('stop-btn').style.display  = 'inline-block';
-    document.getElementById('nav-panel').style.display = 'flex';
+    document.getElementById('stop-btn').style.display    = 'inline-block';
+    document.getElementById('nav-panel').style.display   = 'flex';
 
     const totalDist = fmtDist(route.legs.reduce((a,l)=>a+l.distance,0));
     const totalTime = fmtTime(route.legs.reduce((a,l)=>a+l.duration,0));
@@ -458,14 +274,13 @@ async function startNav() {
 
     renderStepList();
     showStep(0, '');
-    setStatus('✅ Navegando — ' + totalDist + ' · ' + totalTime, true);
-
+    setStatus('✅ Navegando — ' + totalDist + ' · ' + totalTime);
   } catch(e) {
-    setStatus('❌ ' + e.message, true);
+    setStatus('❌ ' + e.message);
   }
 }
 
-// ── Lógica de navegación ─────────────────────────────────────
+// ── Navegación paso a paso ──────────────────────────────────
 function normalizeManeuver(step) {
   const t = step.maneuver.type, m = step.maneuver.modifier || '';
   if (t==='turn') {
@@ -485,10 +300,11 @@ function normalizeManeuver(step) {
   return 'straight';
 }
 
-function fmtDist(m){ return m>=1000?(m/1000).toFixed(1)+' km':Math.round(m)+' m'; }
-function fmtTime(s){ const m=Math.round(s/60); return m<60?m+' min':Math.floor(m/60)+'h '+(m%60)+'min'; }
-function haversine(la1,lo1,la2,lo2){
-  const R=6371000,dLa=(la2-la1)*Math.PI/180,dLo=(lo2-lo1)*Math.PI/180;
+function fmtDist(m) { return m>=1000 ? (m/1000).toFixed(1)+' km' : Math.round(m)+' m'; }
+function fmtTime(s) { const m=Math.round(s/60); return m<60?m+' min':Math.floor(m/60)+'h '+(m%60)+'min'; }
+
+function haversine(la1,lo1,la2,lo2) {
+  const R=6371000, dLa=(la2-la1)*Math.PI/180, dLo=(lo2-lo1)*Math.PI/180;
   const a=Math.sin(dLa/2)**2+Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dLo/2)**2;
   return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
@@ -508,7 +324,7 @@ function showStep(idx, speed) {
 
 function updateStep(speed) {
   if (!navActive || currentStep >= steps.length) return;
-  const s    = steps[currentStep];
+  const s = steps[currentStep];
   const dist = haversine(userLat, userLon, s.location[1], s.location[0]);
   if (dist < 25 && currentStep+1 < steps.length) {
     currentStep++;
@@ -528,7 +344,7 @@ function renderStepList() {
   el.innerHTML = '';
   steps.forEach((s,i) => {
     const d = document.createElement('div');
-    d.className = 'step-item'+(i===currentStep?' active-step':'');
+    d.className = 'step-item' + (i===currentStep?' active-step':'');
     d.innerHTML = `<span style="font-size:1.3rem">${ARROWS[s.maneuver]||'⬆️'}</span>
                    <span class="step-dist">${fmtDist(s.distance)}</span>
                    <span>${s.street||'Sin nombre'}</span>`;
@@ -537,22 +353,17 @@ function renderStepList() {
 }
 
 async function stopNav() {
-  navActive=false; steps=[]; currentStep=0;
-  document.getElementById('nav-panel').style.display='none';
-  document.getElementById('stop-btn').style.display='none';
-  document.getElementById('step-list').innerHTML='';
-  if(routeLine){routeLine.remove();routeLine=null;}
-  setStatus('⏹️ Navegación detenida', true);
-  if(ws&&ws.readyState===WebSocket.OPEN)
+  navActive = false; steps = []; currentStep = 0;
+  document.getElementById('nav-panel').style.display = 'none';
+  document.getElementById('stop-btn').style.display  = 'none';
+  document.getElementById('step-list').innerHTML = '';
+  if (routeLine) { routeLine.remove(); routeLine = null; }
+  setStatus('⏹️ Navegación detenida');
+  if (ws && ws.readyState === WebSocket.OPEN)
     ws.send(JSON.stringify({maneuver:'straight',street:'',distance:'',eta:'',speed:''}));
 }
 
-function setStatus(html, show) {
-  const el = document.getElementById('status');
-  el.innerHTML = html;
-  el.style.display = (show && html) ? 'block' : 'none';
-}
-
+function setStatus(h) { document.getElementById('status').innerHTML = h; }
 window.onload = startGPS;
 </script>
 </body>
