@@ -220,71 +220,224 @@ function showRouteOnMap(coords) {
 
 // ── Buscar destino ──────────────────────────────────────────
 // ── Normalizador de direcciones colombianas ─────────────────
-function normalizeAddress(raw) {
-  let s = raw.trim().toUpperCase();
 
-  // 1. Expandir abreviaturas de tipo de vía
+function normalizeAddress(raw) {
+  let s = raw.trim();
+
+  // 1. Expandir abreviaturas (case-insensitive)
   const VIA = {
-    'CRA':'Carrera', 'CR':'Carrera', 'KR':'Carrera', 'CRERA':'Carrera',
-    'CLL':'Calle',   'CL':'Calle',   'CLLE':'Calle',
-    'AV':'Avenida',  'AVD':'Avenida','AVE':'Avenida',
-    'AK':'Avenida Carrera', 'AC':'Avenida Calle',
-    'TV':'Transversal', 'TRANS':'Transversal',
-    'DG':'Diagonal',    'DIAG':'Diagonal',
-    'CIR':'Circular',   'CIRC':'Circular',
+    'CRA':'Carrera','CR':'Carrera','KR':'Carrera','CRERA':'Carrera',
+    'CRA.':'Carrera','CR.':'Carrera','KR.':'Carrera',
+    'CLL':'Calle','CL':'Calle','CLLE':'Calle','CLL.':'Calle','CL.':'Calle',
+    'AV':'Avenida','AVD':'Avenida','AVE':'Avenida','AV.':'Avenida',
+    'AK':'Avenida Carrera','AC':'Avenida Calle',
+    'TV':'Transversal','TRANS':'Transversal','TV.':'Transversal',
+    'DG':'Diagonal','DIAG':'Diagonal','DG.':'Diagonal',
+    'CIR':'Circular','CIRC':'Circular',
   };
 
-  // Reemplazar abreviatura inicial
-  s = s.replace(/^([A-ZÁÉÍÓÚ]+)(\s|$)/, (_, abbr, sep) => {
+  s = s.replace(/^([\w.]+)(\s|$)/i, (_, abbr, sep) => {
     return (VIA[abbr.toUpperCase()] || abbr) + sep;
   });
 
-  // Capitalizar correctamente (primera letra mayúscula, resto minúscula)
-  s = s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+  // 2. Parsear componentes: <vía> <numVia>[letra] # <cruce>[letra] - <metros>
+  const re = /^([\wáéíóú\s.]+?)\s+(\d+[a-zA-Z]?(?:\s?bis)?)\s*[#Nn][Oo]?\.?\s*(\d+[a-zA-Z]?)\s*[-–]\s*(\d+)/i;
+  const m  = s.match(re);
 
-  // 2. Detectar formato colombiano: <vía> <num> # <cruce> - <puerta>
-  //    Ejemplos: Carrera 92 # 87A - 60
-  //              Calle 80 #10-25
-  //              Carrera 7 # 32A bis - 16
-  const reCompleto = /^([\wáéíóúÁÉÍÓÚ\s]+?)\s+(\d+[a-zA-Z]?(?:\s?bis)?)\s*[#Nn][Oo]?\.?\s*(\d+[a-zA-Z]?)\s*[-–]\s*(\d+)/i;
-  const mCompleto  = s.match(reCompleto);
-
-  if (mCompleto) {
-    const tipoVia  = mCompleto[1].trim();
-    const numVia   = mCompleto[2].trim().replace(/\s/g, '');
-    const numCruce = mCompleto[3].trim();
-    // El número de puerta (mCompleto[4]) lo ignoramos: Nominatim no lo procesa
-    // Usamos la intersección como punto de referencia
+  if (m) {
     return {
-      query:   `${tipoVia} ${numVia} con ${numCruce}, Bogotá, Colombia`,
-      display: `${tipoVia} ${numVia} con ${numCruce}`,
-      nota:    `Número de puerta ignorado — Nominatim no lo soporta`
+      tipoVia:    m[1].trim(),
+      numVia:     m[2].trim().replace(/\s/g,''),
+      numCruce:   m[3].trim(),
+      metros:     parseInt(m[4]),
+      hasMetros:  true,
     };
   }
 
-  // 3. Formato sin número de puerta: <vía> <num> # <cruce>
-  const reSinPuerta = /^([\wáéíóúÁÉÍÓÚ\s]+?)\s+(\d+[a-zA-Z]?)\s*[#Nn][Oo]?\.?\s*(\d+[a-zA-Z]?)/i;
-  const mSinPuerta  = s.match(reSinPuerta);
-
-  if (mSinPuerta) {
-    const tipoVia  = mSinPuerta[1].trim();
-    const numVia   = mSinPuerta[2].trim();
-    const numCruce = mSinPuerta[3].trim();
+  // 3. Sin metros: <vía> <numVia> # <cruce>
+  const re2 = /^([\wáéíóú\s.]+?)\s+(\d+[a-zA-Z]?)\s*[#Nn][Oo]?\.?\s*(\d+[a-zA-Z]?)/i;
+  const m2  = s.match(re2);
+  if (m2) {
     return {
-      query:   `${tipoVia} ${numVia} con ${numCruce}, Bogotá, Colombia`,
-      display: `${tipoVia} ${numVia} con ${numCruce}`,
-      nota:    null
+      tipoVia:   m2[1].trim(),
+      numVia:    m2[2].trim(),
+      numCruce:  m2[3].trim(),
+      metros:    0,
+      hasMetros: false,
     };
   }
 
-  // 4. Sin formato reconocido → enviar tal cual con ciudad
-  // Intentar detectar si ya tiene ciudad
-  const tieneCiudad = /bogot|medell|cali|barranq|cartagena|bucaramanga|pereira/i.test(s);
+  // 4. Sin formato reconocido
+  return { raw: s, hasMetros: false };
+}
+
+// ── Geocodificar con interpolación ──────────────────────────
+async function geocodeColombiana(parsed, ciudad = 'Bogotá') {
+
+  // Caso: dirección no parseada → query directo
+  if (parsed.raw) {
+    const data = await nominatimSearch(parsed.raw + ', ' + ciudad + ', Colombia');
+    if (data.length) return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon), exact: false };
+    throw new Error('Dirección no encontrada');
+  }
+
+  const { tipoVia, numVia, numCruce, metros, hasMetros } = parsed;
+
+  // ── Determinar la vía sobre la que se interpolará ─────────
+  // En Bogotá: si la vía principal es Carrera, se camina sobre ella
+  // en dirección de las calles crecientes (norte). Si es Calle, se
+  // camina sobre ella en dirección de las carreras crecientes (este).
+  const esCarrera = /carrera|transversal/i.test(tipoVia);
+
+  // Número base del cruce (sin letra) para calcular el cruce siguiente
+  const numCruceBase   = parseInt(numCruce);
+  const letraCruce     = numCruce.replace(/\d/g, '');
+  const numCruceSig    = numCruceBase + 1;
+
+  // Queries para las dos intersecciones
+  const q1 = `${tipoVia} ${numVia} con ${numCruce}, ${ciudad}, Colombia`;
+  const q2 = `${tipoVia} ${numVia} con ${numCruceSig}, ${ciudad}, Colombia`;
+
+  let pt1 = null, pt2 = null;
+
+  // Buscar intersección principal
+  const data1 = await nominatimSearch(q1);
+  if (data1.length) {
+    pt1 = { lat: parseFloat(data1[0].lat), lon: parseFloat(data1[0].lon) };
+  }
+
+  // Si no hay metros o no se encontró pt1, devolver pt1 o fallar
+  if (!hasMetros || metros === 0) {
+    if (pt1) return { lat: pt1.lat, lon: pt1.lon, exact: false, label: q1 };
+    throw new Error(`No se encontró: ${q1}`);
+  }
+
+  // Buscar intersección siguiente para interpolar
+  const data2 = await nominatimSearch(q2);
+  if (data2.length) {
+    pt2 = { lat: parseFloat(data2[0].lat), lon: parseFloat(data2[0].lon) };
+  }
+
+  // Si tenemos ambos puntos → interpolar
+  if (pt1 && pt2) {
+    const interpolado = interpolate(pt1, pt2, metros);
+    return {
+      lat:   interpolado.lat,
+      lon:   interpolado.lon,
+      exact: true,
+      label: `${tipoVia} ${numVia} #${numCruce}-${metros}`,
+      pt1, pt2, metros
+    };
+  }
+
+  // Solo pt1 encontrado → devolver la esquina
+  if (pt1) {
+    return {
+      lat: pt1.lat, lon: pt1.lon,
+      exact: false,
+      label: q1,
+      nota: 'Posición aproximada en la esquina (cruce siguiente no encontrado)'
+    };
+  }
+
+  // Fallback: solo tipo+numVia
+  const fallback = `${tipoVia} ${numVia}, ${ciudad}, Colombia`;
+  const dataFb   = await nominatimSearch(fallback);
+  if (dataFb.length) {
+    return {
+      lat: parseFloat(dataFb[0].lat), lon: parseFloat(dataFb[0].lon),
+      exact: false, label: fallback,
+      nota: 'Solo se encontró la vía principal'
+    };
+  }
+
+  throw new Error(`No se encontró ninguna referencia para: ${tipoVia} ${numVia}`);
+}
+
+// ── Nominatim helper ────────────────────────────────────────
+async function nominatimSearch(q) {
+  const url = 'https://nominatim.openstreetmap.org/search?q='
+    + encodeURIComponent(q)
+    + '&format=json&limit=1&countrycodes=co';
+  const res = await fetch(url, { headers: { 'Accept-Language': 'es' } });
+  return res.json();
+}
+
+// ── Interpolación lineal entre dos coordenadas ──────────────
+// Calcula el punto a `metros` desde pt1 en dirección a pt2
+function interpolate(pt1, pt2, metros) {
+  const R     = 6371000; // radio tierra en metros
+  const dLat  = (pt2.lat - pt1.lat) * Math.PI / 180;
+  const dLon  = (pt2.lon - pt1.lon) * Math.PI / 180;
+  const dist  = Math.sqrt(
+    (dLat * R) * (dLat * R) +
+    (dLon * R * Math.cos(pt1.lat * Math.PI / 180)) *
+    (dLon * R * Math.cos(pt1.lat * Math.PI / 180))
+  );
+  // Fracción de avance (limitada a 0-1 por si metros > distancia real)
+  const t = Math.min(1, Math.max(0, metros / dist));
   return {
-    query:   s + (tieneCiudad ? ', Colombia' : ', Bogotá, Colombia'),
-    display: s,
-    nota:    null
+    lat: pt1.lat + t * (pt2.lat - pt1.lat),
+    lon: pt1.lon + t * (pt2.lon - pt1.lon),
   };
+}
+
+// ── searchDest() actualizado ────────────────────────────────
+async function searchDest() {
+  const raw = document.getElementById('dest-input').value.trim();
+  if (!raw) { setStatus('⚠️ Escribe un destino', true); return; }
+
+  hideConfirmPanel();
+  setStatus('🔍 Buscando dirección...', true);
+
+  try {
+    const parsed = normalizeAddress(raw);
+    const result = await geocodeColombiana(parsed);
+
+    destLat = result.lat;
+    destLon = result.lon;
+
+    const label    = result.label || raw;
+    const exactMsg = result.exact
+      ? '<small style="color:#0f0">✅ Posición interpolada con el número exacto</small>'
+      : result.nota
+        ? `<small style="color:#fa0">⚠️ ${result.nota}</small>`
+        : '<small style="color:#aaa">📍 Esquina de referencia encontrada</small>';
+
+    showDestOnMap(destLat, destLon, label);
+
+    // Si tenemos los dos puntos, dibujar también la línea de interpolación en el mapa
+    if (result.pt1 && result.pt2) {
+      showInterpolationOnMap(result.pt1, result.pt2, result);
+    }
+
+    setStatus('', false);
+    document.getElementById('confirm-name').textContent = '📌 ' + label;
+    document.getElementById('confirm-addr').innerHTML   = exactMsg;
+    document.getElementById('confirm-panel').style.display = 'block';
+
+  } catch(e) {
+    setStatus('❌ ' + e.message
+      + '<br><small style="color:#888">Prueba: "Carrera 94G con 85, Bogotá"</small>', true);
+  }
+}
+
+// ── Visualizar interpolación en el mapa ─────────────────────
+let interpLayer = null;
+function showInterpolationOnMap(pt1, pt2, result) {
+  if (!map) return;
+  if (interpLayer) interpLayer.remove();
+
+  // Línea entre las dos esquinas
+  interpLayer = L.layerGroup([
+    L.polyline([[pt1.lat, pt1.lon],[pt2.lat, pt2.lon]],
+      { color:'#ffa500', weight:3, dashArray:'6,4', opacity:0.7 }),
+    L.circleMarker([pt1.lat, pt1.lon],
+      { radius:5, color:'#ffa500', fillColor:'#ffa500', fillOpacity:0.8 })
+      .bindTooltip('Esquina ' + result.label?.split('#')[0]),
+    L.circleMarker([pt2.lat, pt2.lon],
+      { radius:5, color:'#ffa500', fillColor:'#ffa500', fillOpacity:0.8 }),
+  ]).addTo(map);
 }
 
 // ── Buscar destino con fallback de 3 estrategias ────────────
