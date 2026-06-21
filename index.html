@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>GPS Moto</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#111;color:#fff;font-family:Arial,sans-serif;
+       display:flex;flex-direction:column;align-items:center;padding:12px;min-height:100vh}
+  h2{color:#0ff;margin-bottom:10px;font-size:1.1rem}
+
+  #ws-row{display:flex;gap:8px;width:100%;max-width:440px;margin-bottom:10px}
+  #ws-input{flex:1;padding:9px;border-radius:8px;border:1px solid #555;
+            background:#222;color:#fff;font-size:0.95rem}
+  #ws-btn{padding:9px 14px;border-radius:8px;border:none;
+          background:#ffa500;color:#000;font-weight:bold;cursor:pointer}
+  #ws-status{font-size:0.8rem;color:#888;margin-bottom:8px}
+
+  #dest-row{display:flex;gap:8px;width:100%;max-width:440px;margin-bottom:10px}
+  #dest-input{flex:1;padding:9px;border-radius:8px;border:1px solid #0ff;
+              background:#222;color:#fff;font-size:0.95rem}
+  button.go{padding:9px 16px;border-radius:8px;border:none;
+            background:#0ff;color:#000;font-weight:bold;cursor:pointer}
+  button.stop{padding:9px 14px;border-radius:8px;border:none;
+              background:#f44;color:#fff;font-weight:bold;cursor:pointer;display:none}
+
+  #map{width:100%;max-width:440px;height:220px;border-radius:10px;
+       border:1px solid #333;margin-bottom:10px;display:none}
+
+  #status{width:100%;max-width:440px;background:#1a1a2e;border-radius:8px;
+          padding:10px;margin-bottom:10px;font-size:0.85rem;color:#aaa;min-height:40px}
+  #status b{color:#0ff}
+
+  #nav-panel{width:100%;max-width:440px;background:#0d1b2a;border-radius:12px;
+             padding:16px;display:none;flex-direction:column;align-items:center;gap:8px}
+  #arrow-box{font-size:4.5rem;line-height:1}
+  #maneuver-text{font-size:1rem;color:#0ff;font-weight:bold;text-align:center}
+  #distance-text{font-size:2rem;color:#ffa500;font-weight:bold}
+  #street-name{font-size:1.2rem;color:#fff;font-weight:bold;text-align:center}
+  #eta-row{display:flex;gap:20px;color:#aaa;font-size:0.9rem}
+
+  #step-list{width:100%;max-width:440px;margin-top:8px}
+  .step-item{background:#1a1a2e;border-radius:8px;padding:7px 10px;
+             margin-bottom:5px;font-size:0.82rem;color:#ccc;
+             display:flex;gap:8px;align-items:center}
+  .step-item.active-step{border-left:3px solid #0ff;color:#fff}
+  .step-dist{color:#ffa500;font-weight:bold;min-width:50px}
+</style>
+</head>
+<body>
+<h2>🏍️ GPS Moto Display</h2>
+
+<!-- Conexión WebSocket al ESP32 -->
+<div id="ws-row">
+  <input id="ws-input" type="text" placeholder="IP del ESP32 ej: 192.168.1.105"/>
+  <button id="ws-btn" onclick="connectWS()">Conectar</button>
+</div>
+<div id="ws-status">⚡ Sin conectar al display</div>
+
+<!-- Buscador de destino -->
+<div id="dest-row">
+  <input id="dest-input" type="text" placeholder="¿A dónde vas? Dirección o lugar"/>
+  <button class="go" onclick="searchDest()">Buscar</button>
+  <button class="stop" id="stop-btn" onclick="stopNav()">✕</button>
+</div>
+
+<!-- Mapa de confirmación -->
+<div id="map"></div>
+
+<div id="status">📡 Esperando GPS...</div>
+
+<div id="nav-panel">
+  <div id="arrow-box">⬆️</div>
+  <div id="maneuver-text">Continúa recto</div>
+  <div id="distance-text">--</div>
+  <div id="street-name">--</div>
+  <div id="eta-row">
+    <span>🕐 <span id="eta-val">--</span></span>
+    <span>🛣️ <span id="dist-total">--</span></span>
+  </div>
+</div>
+<div id="step-list"></div>
+
+<script>
+// ── Estado ─────────────────────────────────────────────────
+let ws        = null;
+let userLat   = null, userLon = null;
+let destLat   = null, destLon = null;
+let steps     = [], currentStep = 0;
+let navActive = false;
+let map       = null, userMarker = null, destMarker = null, routeLine = null;
+let destConfirmed = false;
+
+const ARROWS = {
+  'turn-left':'⬅️','turn-right':'➡️','turn-slight-left':'↖️',
+  'turn-slight-right':'↗️','turn-sharp-left':'↩️','turn-sharp-right':'↪️',
+  'uturn':'🔄','roundabout':'🔃','straight':'⬆️',
+  'depart':'🚀','arrive':'🏁','exit':'↗️','merge':'⬆️'
+};
+const MANEUVER_ES = {
+  'turn-left':'Gira a la izquierda','turn-right':'Gira a la derecha',
+  'turn-slight-left':'Gira ligeramente izquierda','turn-slight-right':'Gira ligeramente derecha',
+  'turn-sharp-left':'Giro cerrado izquierda','turn-sharp-right':'Giro cerrado derecha',
+  'uturn':'Giro en U','roundabout':'Entra a la rotonda',
+  'straight':'Continúa recto','depart':'Inicia recorrido',
+  'arrive':'¡Llegaste!','exit':'Toma la salida','merge':'Incorpora al carril'
+};
+
+// ── WebSocket ───────────────────────────────────────────────
+function connectWS() {
+  const ip = document.getElementById('ws-input').value.trim();
+  if (!ip) { setWSStatus('⚠️ Escribe la IP del ESP32'); return; }
+  if (ws) ws.close();
+  ws = new WebSocket('ws://' + ip + ':81');
+  ws.onopen    = () => setWSStatus('✅ Conectado al display · ' + ip);
+  ws.onclose   = () => setWSStatus('🔴 Desconectado del display');
+  ws.onerror   = () => setWSStatus('❌ Error de conexión — verifica IP y WiFi');
+  ws.onmessage = e  => console.log('ESP32:', e.data);
+}
+function setWSStatus(t) { document.getElementById('ws-status').textContent = t; }
+
+function sendToDisplay(maneuver, street, distance, speed, eta) {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({maneuver, street, distance, speed, eta}));
+  }
+}
+
+// ── GPS ─────────────────────────────────────────────────────
+function startGPS() {
+  if (!navigator.geolocation) { setStatus('❌ GPS no disponible'); return; }
+  navigator.geolocation.watchPosition(
+    pos => {
+      userLat = pos.coords.latitude;
+      userLon = pos.coords.longitude;
+      const spd = pos.coords.speed ? Math.round(pos.coords.speed * 3.6) + ' km/h' : '';
+      if (map && userMarker) {
+        userMarker.setLatLng([userLat, userLon]);
+      }
+      if (!navActive) {
+        setStatus(`📍 GPS OK — <b>${userLat.toFixed(5)}, ${userLon.toFixed(5)}</b>`);
+      } else {
+        updateStep(spd);
+      }
+    },
+    err => setStatus('❌ GPS: ' + err.message),
+    {enableHighAccuracy:true, maximumAge:2000, timeout:10000}
+  );
+}
+
+// ── Mapa Leaflet ────────────────────────────────────────────
+function initMap(lat, lon) {
+  const mapEl = document.getElementById('map');
+  mapEl.style.display = 'block';
+  if (!map) {
+    map = L.map('map').setView([lat, lon], 15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap'
+    }).addTo(map);
+  }
+  if (userMarker) userMarker.remove();
+  if (userLat) {
+    userMarker = L.circleMarker([userLat||lat, userLon||lon], {
+      radius:8, color:'#0ff', fillColor:'#0ff', fillOpacity:0.9
+    }).addTo(map).bindPopup('Tu ubicación');
+  }
+}
+
+function showDestOnMap(lat, lon, name) {
+  if (!map) initMap(lat, lon);
+  if (destMarker) destMarker.remove();
+  destMarker = L.marker([lat, lon])
+    .addTo(map)
+    .bindPopup('<b>' + name + '</b>')
+    .openPopup();
+  const bounds = userLat
+    ? L.latLngBounds([[userLat,userLon],[lat,lon]])
+    : L.latLngBounds([[lat,lon],[lat+0.01,lon+0.01]]);
+  map.fitBounds(bounds, {padding:[30,30]});
+}
+
+function showRouteOnMap(coords) {
+  if (routeLine) routeLine.remove();
+  routeLine = L.polyline(coords, {color:'#0ff', weight:4, opacity:0.8}).addTo(map);
+  map.fitBounds(routeLine.getBounds(), {padding:[20,20]});
+}
+
+// ── Geocodificación ─────────────────────────────────────────
+async function searchDest() {
+  const q = document.getElementById('dest-input').value.trim();
+  if (!q) { setStatus('⚠️ Escribe un destino'); return; }
+  setStatus('🔍 Buscando <b>' + q + '</b>...');
+  destConfirmed = false;
+
+  try {
+    const url = 'https://nominatim.openstreetmap.org/search?q='
+      + encodeURIComponent(q) + '&format=json&limit=1&countrycodes=co';
+    const res  = await fetch(url, {headers:{'Accept-Language':'es'}});
+    const data = await res.json();
+    if (!data.length) throw new Error('Dirección no encontrada');
+
+    destLat = parseFloat(data[0].lat);
+    destLon = parseFloat(data[0].lon);
+    const nombre = data[0].display_name;
+
+    if (!map) initMap(destLat, destLon);
+    else showDestOnMap(destLat, destLon, nombre);
+    showDestOnMap(destLat, destLon, nombre);
+
+    setStatus(`📌 ¿Es este el lugar correcto?<br>
+      <small style="color:#aaa">${nombre.substring(0,80)}...</small><br><br>
+      <button onclick="startNav()" style="
+        padding:8px 20px;background:#0f0;color:#000;border:none;
+        border-radius:8px;font-weight:bold;cursor:pointer;font-size:1rem">
+        ✅ Sí, iniciar ruta
+      </button>
+      &nbsp;
+      <button onclick="document.getElementById('dest-input').focus()" style="
+        padding:8px 16px;background:#555;color:#fff;border:none;
+        border-radius:8px;cursor:pointer;font-size:0.9rem">
+        ✏️ Cambiar
+      </button>`);
+  } catch(e) {
+    setStatus('❌ ' + e.message);
+  }
+}
+
+// ── Calcular ruta ───────────────────────────────────────────
+async function startNav() {
+  if (!userLat) { setStatus('⚠️ Esperando GPS...'); return; }
+  setStatus('🛣️ Calculando ruta...');
+  try {
+    const url = 'https://router.project-osrm.org/route/v1/driving/'
+      + userLon + ',' + userLat + ';'
+      + destLon + ',' + destLat
+      + '?steps=true&geometries=geojson&overview=full';
+    const res  = await fetch(url);
+    const data = await res.json();
+    if (data.code !== 'Ok') throw new Error('Ruta no disponible');
+
+    const route = data.routes[0];
+    steps = [];
+    const mapCoords = [];
+
+    // Extraer coordenadas para la polilínea
+    for (const c of route.geometry.coordinates) {
+      mapCoords.push([c[1], c[0]]);
+    }
+    showRouteOnMap(mapCoords);
+
+    for (const leg of route.legs) {
+      for (const step of leg.steps) {
+        steps.push({
+          maneuver: normalizeManeuver(step),
+          street:   step.name || 'Sin nombre',
+          distance: step.distance,
+          duration: step.duration,
+          location: step.maneuver.location
+        });
+      }
+    }
+
+    currentStep = 0;
+    navActive   = true;
+    document.getElementById('stop-btn').style.display    = 'inline-block';
+    document.getElementById('nav-panel').style.display   = 'flex';
+
+    const totalDist = fmtDist(route.legs.reduce((a,l)=>a+l.distance,0));
+    const totalTime = fmtTime(route.legs.reduce((a,l)=>a+l.duration,0));
+    document.getElementById('dist-total').textContent = totalDist;
+    document.getElementById('eta-val').textContent    = totalTime;
+
+    renderStepList();
+    showStep(0, '');
+    setStatus('✅ Navegando — ' + totalDist + ' · ' + totalTime);
+  } catch(e) {
+    setStatus('❌ ' + e.message);
+  }
+}
+
+// ── Navegación paso a paso ──────────────────────────────────
+function normalizeManeuver(step) {
+  const t = step.maneuver.type, m = step.maneuver.modifier || '';
+  if (t==='turn') {
+    if (m.includes('sharp') && m.includes('left'))  return 'turn-sharp-left';
+    if (m.includes('sharp') && m.includes('right')) return 'turn-sharp-right';
+    if (m.includes('slight')&& m.includes('left'))  return 'turn-slight-left';
+    if (m.includes('slight')&& m.includes('right')) return 'turn-slight-right';
+    if (m.includes('left'))  return 'turn-left';
+    if (m.includes('right')) return 'turn-right';
+    if (m.includes('uturn')) return 'uturn';
+  }
+  if (t==='rotary'||t==='roundabout') return 'roundabout';
+  if (t==='depart')  return 'depart';
+  if (t==='arrive')  return 'arrive';
+  if (t==='merge')   return 'merge';
+  if (t.includes('exit')) return 'exit';
+  return 'straight';
+}
+
+function fmtDist(m) { return m>=1000 ? (m/1000).toFixed(1)+' km' : Math.round(m)+' m'; }
+function fmtTime(s) { const m=Math.round(s/60); return m<60?m+' min':Math.floor(m/60)+'h '+(m%60)+'min'; }
+
+function haversine(la1,lo1,la2,lo2) {
+  const R=6371000, dLa=(la2-la1)*Math.PI/180, dLo=(lo2-lo1)*Math.PI/180;
+  const a=Math.sin(dLa/2)**2+Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dLo/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+function showStep(idx, speed) {
+  if (idx >= steps.length) return;
+  const s = steps[idx];
+  document.getElementById('arrow-box').textContent     = ARROWS[s.maneuver]||'⬆️';
+  document.getElementById('maneuver-text').textContent = MANEUVER_ES[s.maneuver]||'Continúa';
+  document.getElementById('distance-text').textContent = fmtDist(s.distance);
+  document.getElementById('street-name').textContent   = s.street;
+  document.querySelectorAll('.step-item').forEach((el,i)=>
+    el.classList.toggle('active-step', i===idx));
+  sendToDisplay(s.maneuver, s.street, fmtDist(s.distance), speed,
+    document.getElementById('eta-val').textContent);
+}
+
+function updateStep(speed) {
+  if (!navActive || currentStep >= steps.length) return;
+  const s = steps[currentStep];
+  const dist = haversine(userLat, userLon, s.location[1], s.location[0]);
+  if (dist < 25 && currentStep+1 < steps.length) {
+    currentStep++;
+    renderStepList();
+    showStep(currentStep, speed);
+  } else {
+    document.getElementById('distance-text').textContent = fmtDist(dist);
+    sendToDisplay(steps[currentStep].maneuver,
+                  steps[currentStep].street,
+                  fmtDist(dist), speed,
+                  document.getElementById('eta-val').textContent);
+  }
+}
+
+function renderStepList() {
+  const el = document.getElementById('step-list');
+  el.innerHTML = '';
+  steps.forEach((s,i) => {
+    const d = document.createElement('div');
+    d.className = 'step-item' + (i===currentStep?' active-step':'');
+    d.innerHTML = `<span style="font-size:1.3rem">${ARROWS[s.maneuver]||'⬆️'}</span>
+                   <span class="step-dist">${fmtDist(s.distance)}</span>
+                   <span>${s.street||'Sin nombre'}</span>`;
+    el.appendChild(d);
+  });
+}
+
+async function stopNav() {
+  navActive = false; steps = []; currentStep = 0;
+  document.getElementById('nav-panel').style.display = 'none';
+  document.getElementById('stop-btn').style.display  = 'none';
+  document.getElementById('step-list').innerHTML = '';
+  if (routeLine) { routeLine.remove(); routeLine = null; }
+  setStatus('⏹️ Navegación detenida');
+  if (ws && ws.readyState === WebSocket.OPEN)
+    ws.send(JSON.stringify({maneuver:'straight',street:'',distance:'',eta:'',speed:''}));
+}
+
+function setStatus(h) { document.getElementById('status').innerHTML = h; }
+window.onload = startGPS;
+</script>
+</body>
+</html>
