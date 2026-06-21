@@ -219,36 +219,132 @@ function showRouteOnMap(coords) {
 }
 
 // ── Buscar destino ──────────────────────────────────────────
-async function searchDest() {
-  const q = document.getElementById('dest-input').value.trim();
-  if (!q) { setStatus('⚠️ Escribe un destino', true); return; }
+// ── Normalizador de direcciones colombianas ─────────────────
+function normalizeAddress(raw) {
+  let s = raw.trim().toUpperCase();
 
-  // Ocultar panel anterior si había
-  hideConfirmPanel();
-  setStatus('🔍 Buscando <b>' + q + '</b>...', true);
+  // 1. Expandir abreviaturas de tipo de vía
+  const VIA = {
+    'CRA':'Carrera', 'CR':'Carrera', 'KR':'Carrera', 'CRERA':'Carrera',
+    'CLL':'Calle',   'CL':'Calle',   'CLLE':'Calle',
+    'AV':'Avenida',  'AVD':'Avenida','AVE':'Avenida',
+    'AK':'Avenida Carrera', 'AC':'Avenida Calle',
+    'TV':'Transversal', 'TRANS':'Transversal',
+    'DG':'Diagonal',    'DIAG':'Diagonal',
+    'CIR':'Circular',   'CIRC':'Circular',
+  };
 
-  try {
-    const url = 'https://nominatim.openstreetmap.org/search?q='
-      + encodeURIComponent(q)
-      + '&format=json&limit=1&countrycodes=co';
-    const res  = await fetch(url, {headers:{'Accept-Language':'es'}});
-    const data = await res.json();
-    if (!data.length) throw new Error('Dirección no encontrada en Colombia');
+  // Reemplazar abreviatura inicial
+  s = s.replace(/^([A-ZÁÉÍÓÚ]+)(\s|$)/, (_, abbr, sep) => {
+    return (VIA[abbr.toUpperCase()] || abbr) + sep;
+  });
 
-    destLat = parseFloat(data[0].lat);
-    destLon = parseFloat(data[0].lon);
-    const fullName    = data[0].display_name;
-    const shortName   = fullName.split(',').slice(0,2).join(',');
+  // Capitalizar correctamente (primera letra mayúscula, resto minúscula)
+  s = s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
 
-    showDestOnMap(destLat, destLon, shortName);
+  // 2. Detectar formato colombiano: <vía> <num> # <cruce> - <puerta>
+  //    Ejemplos: Carrera 92 # 87A - 60
+  //              Calle 80 #10-25
+  //              Carrera 7 # 32A bis - 16
+  const reCompleto = /^([\wáéíóúÁÉÍÓÚ\s]+?)\s+(\d+[a-zA-Z]?(?:\s?bis)?)\s*[#Nn][Oo]?\.?\s*(\d+[a-zA-Z]?)\s*[-–]\s*(\d+)/i;
+  const mCompleto  = s.match(reCompleto);
 
-    // Ocultar status y mostrar panel de confirmación
-    setStatus('', false);
-    showConfirmPanel(shortName, fullName);
-
-  } catch(e) {
-    setStatus('❌ ' + e.message, true);
+  if (mCompleto) {
+    const tipoVia  = mCompleto[1].trim();
+    const numVia   = mCompleto[2].trim().replace(/\s/g, '');
+    const numCruce = mCompleto[3].trim();
+    // El número de puerta (mCompleto[4]) lo ignoramos: Nominatim no lo procesa
+    // Usamos la intersección como punto de referencia
+    return {
+      query:   `${tipoVia} ${numVia} con ${numCruce}, Bogotá, Colombia`,
+      display: `${tipoVia} ${numVia} con ${numCruce}`,
+      nota:    `Número de puerta ignorado — Nominatim no lo soporta`
+    };
   }
+
+  // 3. Formato sin número de puerta: <vía> <num> # <cruce>
+  const reSinPuerta = /^([\wáéíóúÁÉÍÓÚ\s]+?)\s+(\d+[a-zA-Z]?)\s*[#Nn][Oo]?\.?\s*(\d+[a-zA-Z]?)/i;
+  const mSinPuerta  = s.match(reSinPuerta);
+
+  if (mSinPuerta) {
+    const tipoVia  = mSinPuerta[1].trim();
+    const numVia   = mSinPuerta[2].trim();
+    const numCruce = mSinPuerta[3].trim();
+    return {
+      query:   `${tipoVia} ${numVia} con ${numCruce}, Bogotá, Colombia`,
+      display: `${tipoVia} ${numVia} con ${numCruce}`,
+      nota:    null
+    };
+  }
+
+  // 4. Sin formato reconocido → enviar tal cual con ciudad
+  // Intentar detectar si ya tiene ciudad
+  const tieneCiudad = /bogot|medell|cali|barranq|cartagena|bucaramanga|pereira/i.test(s);
+  return {
+    query:   s + (tieneCiudad ? ', Colombia' : ', Bogotá, Colombia'),
+    display: s,
+    nota:    null
+  };
+}
+
+// ── Buscar destino con fallback de 3 estrategias ────────────
+async function searchDest() {
+  const raw = document.getElementById('dest-input').value.trim();
+  if (!raw) { setStatus('⚠️ Escribe un destino', true); return; }
+
+  hideConfirmPanel();
+  setStatus('🔍 Buscando...', true);
+
+  const norm = normalizeAddress(raw);
+
+  // Intentar hasta 3 queries en orden de especificidad
+  const queries = [
+    norm.query,                                          // intersección normalizada
+    norm.display + ', Colombia',                         // sin ciudad explícita
+    raw.replace(/\s*#\s*\d+[a-zA-Z]?\s*-\s*\d+/,'')    // fallback: solo tipo+número de vía
+      .replace(/\s*#.*/,'') + ', Bogotá, Colombia'
+  ];
+
+  let result = null;
+  let usedQuery = '';
+
+  for (const q of queries) {
+    try {
+      const url = 'https://nominatim.openstreetmap.org/search?q='
+        + encodeURIComponent(q)
+        + '&format=json&limit=1&countrycodes=co';
+      const res  = await fetch(url, { headers: {'Accept-Language': 'es'} });
+      const data = await res.json();
+      if (data.length) {
+        result    = data[0];
+        usedQuery = q;
+        break;
+      }
+    } catch(e) { /* continuar con siguiente */ }
+  }
+
+  if (!result) {
+    setStatus('❌ No se encontró la dirección. Prueba escribir solo la calle o carrera principal.', true);
+    return;
+  }
+
+  destLat = parseFloat(result.lat);
+  destLon = parseFloat(result.lon);
+
+  const shortName = norm.display || raw;
+  const fullName  = result.display_name;
+  const nota      = norm.nota
+    ? `<br><small style="color:#fa0">⚠️ ${norm.nota}</small>`
+    : '';
+
+  showDestOnMap(destLat, destLon, shortName);
+  setStatus('', false);
+
+  // Mostrar nota si el número de puerta fue ignorado
+  document.getElementById('confirm-name').textContent = '📌 ' + shortName;
+  document.getElementById('confirm-addr').innerHTML   =
+    (fullName.length > 100 ? fullName.substring(0,100)+'...' : fullName) + nota;
+  document.getElementById('confirm-panel').style.display = 'block';
 }
 
 function showConfirmPanel(short, full) {
