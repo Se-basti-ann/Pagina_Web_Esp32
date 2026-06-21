@@ -11,35 +11,76 @@
   body{background:#111;color:#fff;font-family:Arial,sans-serif;
        display:flex;flex-direction:column;align-items:center;padding:12px;min-height:100vh}
   h2{color:#0ff;margin-bottom:10px;font-size:1.1rem}
+
+  .card{width:100%;max-width:440px;background:#1a1a2e;border-radius:12px;
+        padding:14px;margin-bottom:10px}
+
+  /* WebSocket */
   #ws-row{display:flex;gap:8px;width:100%;max-width:440px;margin-bottom:6px}
   #ws-input{flex:1;padding:9px;border-radius:8px;border:1px solid #555;
             background:#222;color:#fff;font-size:0.95rem}
   #ws-btn{padding:9px 14px;border-radius:8px;border:none;
           background:#ffa500;color:#000;font-weight:bold;cursor:pointer}
+  #ws-status{width:100%;max-width:440px;font-size:0.8rem;color:#888;margin-bottom:6px}
   #gps-bar{width:100%;max-width:440px;font-size:0.78rem;color:#666;
-           padding:4px 0;margin-bottom:6px;min-height:20px}
-  #ws-status{width:100%;max-width:440px;font-size:0.8rem;color:#888;margin-bottom:8px}
-  #dest-row{display:flex;gap:8px;width:100%;max-width:440px;margin-bottom:10px}
-  #dest-input{flex:1;padding:9px;border-radius:8px;border:1px solid #0ff;
+           padding:4px 0;margin-bottom:8px;min-height:20px}
+
+  /* Tabs de modo */
+  #mode-tabs{display:flex;gap:6px;width:100%;max-width:440px;margin-bottom:10px}
+  .tab{flex:1;padding:9px;border-radius:8px;border:2px solid #333;
+       background:#222;color:#777;font-weight:bold;font-size:0.85rem;
+       cursor:pointer;text-align:center;transition:all .2s}
+  .tab.active{border-color:#0ff;color:#0ff;background:#0d1b2a}
+
+  /* Panel modo texto */
+  #panel-text{display:none;width:100%;max-width:440px}
+  #dest-row{display:flex;gap:8px;margin-bottom:8px}
+  #dest-input{flex:1;padding:9px;border-radius:8px;border:1px solid #555;
               background:#222;color:#fff;font-size:0.95rem}
   button.go{padding:9px 16px;border-radius:8px;border:none;
             background:#0ff;color:#000;font-weight:bold;cursor:pointer}
-  button.stop-btn{padding:9px 14px;border-radius:8px;border:none;
-                  background:#f44;color:#fff;font-weight:bold;cursor:pointer;display:none}
+
+  /* Panel modo link */
+  #panel-link{display:none;width:100%;max-width:440px}
+  .how-to{background:#0d1b2a;border-radius:10px;padding:12px;
+           margin-bottom:8px;font-size:0.8rem;color:#aaa;line-height:1.7}
+  .how-to b{color:#0ff}
+  .how-to .step{display:flex;gap:8px;align-items:flex-start;margin-bottom:4px}
+  .how-to .num{background:#0ff;color:#000;border-radius:50%;
+               width:20px;height:20px;display:flex;align-items:center;
+               justify-content:center;font-weight:bold;font-size:0.75rem;
+               flex-shrink:0;margin-top:1px}
+  #link-row{display:flex;gap:8px;margin-bottom:8px}
+  #link-input{flex:1;padding:9px;border-radius:8px;border:1px solid #0ff;
+              background:#222;color:#fff;font-size:0.85rem}
+  button.parse-btn{padding:9px 14px;border-radius:8px;border:none;
+                   background:#0ff;color:#000;font-weight:bold;cursor:pointer}
+
+  /* Confirm */
   #confirm-panel{display:none;width:100%;max-width:440px;
                  background:#0d1b2a;border-radius:12px;padding:14px;margin-bottom:10px}
-  #confirm-panel .dest-name{font-size:0.95rem;color:#fff;font-weight:bold;margin-bottom:8px}
-  #confirm-panel .dest-meta{font-size:0.78rem;color:#aaa;margin-bottom:10px;line-height:1.5}
+  #confirm-panel .dest-name{font-size:1rem;color:#fff;font-weight:bold;margin-bottom:6px}
+  #confirm-panel .dest-meta{font-size:0.78rem;color:#aaa;margin-bottom:12px;line-height:1.5}
   .confirm-btns{display:flex;gap:10px}
   .btn-yes{flex:1;padding:10px;border-radius:8px;border:none;
            background:#0f0;color:#000;font-weight:bold;font-size:1rem;cursor:pointer}
   .btn-no{flex:1;padding:10px;border-radius:8px;border:none;
-          background:#555;color:#fff;font-weight:bold;font-size:0.9rem;cursor:pointer}
+          background:#555;color:#fff;font-weight:bold;cursor:pointer}
+
+  /* Stop */
+  #stop-btn{display:none;width:100%;max-width:440px;padding:10px;
+            border-radius:8px;border:none;background:#f44;color:#fff;
+            font-weight:bold;font-size:1rem;cursor:pointer;margin-bottom:10px}
+
+  /* Mapa */
   #map{width:100%;max-width:440px;height:220px;border-radius:10px;
        border:1px solid #333;margin-bottom:10px;display:none}
+
+  /* Status */
   #status{width:100%;max-width:440px;background:#1a1a2e;border-radius:8px;
-          padding:10px;margin-bottom:10px;font-size:0.85rem;color:#aaa;
-          min-height:36px;display:none}
+          padding:10px;margin-bottom:10px;font-size:0.85rem;color:#aaa;display:none}
+
+  /* Nav panel */
   #nav-panel{width:100%;max-width:440px;background:#0d1b2a;border-radius:12px;
              padding:16px;display:none;flex-direction:column;align-items:center;gap:8px}
   #arrow-box{font-size:4.5rem;line-height:1}
@@ -47,44 +88,83 @@
   #distance-text{font-size:2rem;color:#ffa500;font-weight:bold}
   #street-name{font-size:1.2rem;color:#fff;font-weight:bold;text-align:center}
   #eta-row{display:flex;gap:20px;color:#aaa;font-size:0.9rem}
+
+  /* Steps */
   #step-list{width:100%;max-width:440px;margin-top:8px}
   .step-item{background:#1a1a2e;border-radius:8px;padding:7px 10px;
              margin-bottom:5px;font-size:0.82rem;color:#ccc;
              display:flex;gap:8px;align-items:center}
   .step-item.active-step{border-left:3px solid #0ff;color:#fff}
   .step-dist{color:#ffa500;font-weight:bold;min-width:50px}
+
+  /* Speed badge */
+  #speed-badge{position:fixed;bottom:16px;right:16px;
+               background:#ffa500;color:#000;border-radius:50%;
+               width:64px;height:64px;display:none;
+               flex-direction:column;align-items:center;justify-content:center;
+               font-weight:bold;font-size:1.1rem;box-shadow:0 2px 8px #0008;z-index:999}
+  #speed-badge .unit{font-size:0.55rem;margin-top:-2px}
 </style>
 </head>
 <body>
 <h2>🏍️ GPS Moto Display</h2>
 
+<!-- WebSocket -->
 <div id="ws-row">
-  <input id="ws-input" type="text" placeholder="IP des ESP32 ej: 192.168.1.105"/>
+  <input id="ws-input" type="text" placeholder="IP del ESP32 ej: 192.168.1.106"/>
   <button id="ws-btn" onclick="connectWS()">Conectar</button>
 </div>
 <div id="ws-status">⚡ Sin conectar al display</div>
 <div id="gps-bar">📡 Obteniendo GPS...</div>
 
-<div id="dest-row">
-  <input id="dest-input" type="text" placeholder="Ej: Cra 94G #85-91"
-         onkeydown="if(event.key==='Enter') searchDest()"/>
-  <button class="go" onclick="searchDest()">Buscar</button>
-  <button class="stop-btn" id="stop-btn" onclick="stopNav()">✕ Parar</button>
+<!-- Tabs -->
+<div id="mode-tabs">
+  <div class="tab active" onclick="setMode('link')" id="tab-link">🔗 Link Google Maps</div>
+  <div class="tab"        onclick="setMode('text')" id="tab-text">⌨️ Escribir dirección</div>
 </div>
 
+<!-- Panel: pegar link -->
+<div id="panel-link">
+  <div class="how-to">
+    <div class="step"><div class="num">1</div><span>Abre <b>Google Maps</b> en tu celular y busca tu destino</span></div>
+    <div class="step"><div class="num">2</div><span>Toca el lugar → botón <b>"Compartir"</b> → <b>"Copiar enlace"</b></span></div>
+    <div class="step"><div class="num">3</div><span>Pega el link aquí abajo y toca <b>Usar</b></span></div>
+  </div>
+  <div id="link-row">
+    <input id="link-input" type="text" placeholder="https://maps.app.goo.gl/...  o  https://www.google.com/maps/..."/>
+    <button class="parse-btn" onclick="parseGMapsLink()">Usar ▶</button>
+  </div>
+</div>
+
+<!-- Panel: escribir dirección -->
+<div id="panel-text">
+  <div id="dest-row">
+    <input id="dest-input" type="text" placeholder="Ej: Cra 94G #85-91, Bogotá"
+           onkeydown="if(event.key==='Enter') searchText()"/>
+    <button class="go" onclick="searchText()">Buscar</button>
+  </div>
+</div>
+
+<!-- Mapa -->
 <div id="map"></div>
 
+<!-- Confirmación -->
 <div id="confirm-panel">
   <div class="dest-name" id="confirm-name"></div>
   <div class="dest-meta" id="confirm-meta"></div>
   <div class="confirm-btns">
-    <button class="btn-yes" onclick="startNav()">✅ Sí, iniciar ruta</button>
-    <button class="btn-no"  onclick="cancelSearch()">✏️ Cambiar destino</button>
+    <button class="btn-yes" onclick="startNav()">✅ Iniciar ruta</button>
+    <button class="btn-no"  onclick="cancelDest()">✏️ Cambiar</button>
   </div>
 </div>
 
+<!-- Status -->
 <div id="status"></div>
 
+<!-- Stop -->
+<button id="stop-btn" onclick="stopNav()">✕ Detener navegación</button>
+
+<!-- Nav -->
 <div id="nav-panel">
   <div id="arrow-box">⬆️</div>
   <div id="maneuver-text">Continúa recto</div>
@@ -97,185 +177,246 @@
 </div>
 <div id="step-list"></div>
 
+<!-- Velocidad flotante -->
+<div id="speed-badge">
+  <span id="speed-val">0</span>
+  <span class="unit">km/h</span>
+</div>
+
 <script>
+// ── Estado global ────────────────────────────────────────────
 let ws=null, userLat=null, userLon=null, destLat=null, destLon=null;
 let steps=[], currentStep=0, navActive=false;
 let map=null, userMarker=null, destMarker=null, routeLine=null;
+let currentSpeed = 0;
 
-const ARROWS={'turn-left':'⬅️','turn-right':'➡️','turn-slight-left':'↖️',
-  'turn-slight-right':'↗️','turn-sharp-left':'↩️','turn-sharp-right':'↪️',
-  'uturn':'🔄','roundabout':'🔃','straight':'⬆️','depart':'🚀','arrive':'🏁','exit':'↗️','merge':'⬆️'};
-const MANEUVER_ES={'turn-left':'Gira a la izquierda','turn-right':'Gira a la derecha',
+const ARROWS={
+  'turn-left':'⬅️','turn-right':'➡️','turn-slight-left':'↖️','turn-slight-right':'↗️',
+  'turn-sharp-left':'↩️','turn-sharp-right':'↪️','uturn':'🔄','roundabout':'🔃',
+  'straight':'⬆️','depart':'🚀','arrive':'🏁','exit':'↗️','merge':'⬆️'
+};
+const MANEUVER_ES={
+  'turn-left':'Gira a la izquierda','turn-right':'Gira a la derecha',
   'turn-slight-left':'Gira levemente izquierda','turn-slight-right':'Gira levemente derecha',
   'turn-sharp-left':'Giro cerrado izquierda','turn-sharp-right':'Giro cerrado derecha',
   'uturn':'Giro en U','roundabout':'Entra a la rotonda','straight':'Continúa recto',
-  'depart':'Inicia recorrido','arrive':'¡Llegaste!','exit':'Toma la salida','merge':'Incorpora al carril'};
+  'depart':'Inicia recorrido','arrive':'¡Llegaste!','exit':'Toma la salida','merge':'Incorpora al carril'
+};
+
+// ── Tabs de modo ────────────────────────────────────────────
+function setMode(m) {
+  document.getElementById('panel-link').style.display = m==='link' ? 'block' : 'none';
+  document.getElementById('panel-text').style.display = m==='text' ? 'block' : 'none';
+  document.getElementById('tab-link').classList.toggle('active', m==='link');
+  document.getElementById('tab-text').classList.toggle('active', m==='text');
+}
+setMode('link');
 
 // ── WebSocket ────────────────────────────────────────────────
-function connectWS(){
-  const ip=document.getElementById('ws-input').value.trim();
-  if(!ip){setWS('⚠️ Escribe la IP');return;}
-  if(ws)ws.close();
-  ws=new WebSocket('ws://'+ip+':81');
-  ws.onopen=()=>setWS('✅ Conectado · '+ip);
-  ws.onclose=()=>setWS('🔴 Desconectado');
-  ws.onerror=()=>setWS('❌ Error — verifica IP y WiFi');
-  ws.onmessage=e=>console.log('ESP32:',e.data);
+function connectWS() {
+  const ip = document.getElementById('ws-input').value.trim();
+  if (!ip) { setWS('⚠️ Escribe la IP'); return; }
+  if (ws) ws.close();
+  ws = new WebSocket('ws://' + ip + ':81');
+  ws.onopen  = () => setWS('✅ Conectado · ' + ip);
+  ws.onclose = () => setWS('🔴 Desconectado');
+  ws.onerror = () => setWS('❌ Error — verifica IP y WiFi');
 }
-function setWS(t){document.getElementById('ws-status').textContent=t;}
-function sendToDisplay(maneuver,street,distance,speed,eta){
-  if(ws&&ws.readyState===WebSocket.OPEN)
-    ws.send(JSON.stringify({maneuver,street,distance,speed,eta}));
+function setWS(t) { document.getElementById('ws-status').textContent = t; }
+
+function sendToDisplay(maneuver, street, distance, speed, eta) {
+  if (ws && ws.readyState === WebSocket.OPEN)
+    ws.send(JSON.stringify({ maneuver, street, distance, speed, eta }));
 }
 
 // ── GPS ──────────────────────────────────────────────────────
-function startGPS(){
-  if(!navigator.geolocation){
-    document.getElementById('gps-bar').textContent='❌ GPS no disponible';return;
+function startGPS() {
+  if (!navigator.geolocation) {
+    document.getElementById('gps-bar').textContent = '❌ GPS no disponible'; return;
   }
   navigator.geolocation.watchPosition(
-    pos=>{
-      userLat=pos.coords.latitude; userLon=pos.coords.longitude;
-      const spd=pos.coords.speed?Math.round(pos.coords.speed*3.6)+' km/h':'';
-      document.getElementById('gps-bar').textContent=
-        '📍 '+userLat.toFixed(5)+', '+userLon.toFixed(5)+(spd?'  •  '+spd:'');
-      if(map&&userMarker)userMarker.setLatLng([userLat,userLon]);
-      if(navActive)updateStep(spd);
+    pos => {
+      userLat = pos.coords.latitude;
+      userLon = pos.coords.longitude;
+      currentSpeed = pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0;
+      const spdTxt = currentSpeed > 0 ? '  •  ' + currentSpeed + ' km/h' : '';
+      document.getElementById('gps-bar').textContent =
+        '📍 ' + userLat.toFixed(5) + ', ' + userLon.toFixed(5) + spdTxt;
+
+      // Badge de velocidad flotante
+      if (navActive) {
+        const badge = document.getElementById('speed-badge');
+        badge.style.display = 'flex';
+        document.getElementById('speed-val').textContent = currentSpeed;
+      }
+
+      if (map && userMarker) userMarker.setLatLng([userLat, userLon]);
+      if (navActive) updateStep();
     },
-    err=>{document.getElementById('gps-bar').textContent='❌ GPS: '+err.message;},
-    {enableHighAccuracy:true,maximumAge:2000,timeout:10000}
+    err => { document.getElementById('gps-bar').textContent = '❌ GPS: ' + err.message; },
+    { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 }
   );
 }
 
-// ── Mapa ─────────────────────────────────────────────────────
-function initMap(lat,lon){
-  document.getElementById('map').style.display='block';
-  if(!map){
-    map=L.map('map').setView([lat,lon],16);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-      {attribution:'© OpenStreetMap'}).addTo(map);
+// ════════════════════════════════════════════════════════════
+// ── MODO 1: Extraer coordenadas de link de Google Maps ──────
+// ════════════════════════════════════════════════════════════
+async function parseGMapsLink() {
+  let raw = document.getElementById('link-input').value.trim();
+  if (!raw) { setStatus('⚠️ Pega un link de Google Maps', true); return; }
+
+  setStatus('🔍 Leyendo link...', true);
+  hideConfirmPanel();
+
+  try {
+    // ── Intentar extraer coordenadas directamente del URL ───
+    let lat = null, lon = null, placeName = '';
+
+    // Formato largo: /maps/place/.../@LAT,LON,...
+    let m = raw.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (m) { lat = parseFloat(m[1]); lon = parseFloat(m[2]); }
+
+    // Formato: /maps?q=LAT,LON
+    if (!lat) {
+      m = raw.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+      if (m) { lat = parseFloat(m[1]); lon = parseFloat(m[2]); }
+    }
+
+    // Formato corto goo.gl o maps.app.goo.gl — necesita resolver redirect
+    if (!lat && (raw.includes('goo.gl') || raw.includes('maps.app'))) {
+      setStatus('🔄 Resolviendo link corto...', true);
+      // Usamos un proxy CORS público para resolver el redirect
+      const resolved = await resolveShortLink(raw);
+      if (resolved) {
+        m = resolved.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+        if (m) { lat = parseFloat(m[1]); lon = parseFloat(m[2]); }
+        if (!lat) {
+          m = resolved.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+          if (m) { lat = parseFloat(m[1]); lon = parseFloat(m[2]); }
+        }
+        // Intentar extraer nombre del lugar de la URL expandida
+        const nameM = resolved.match(/maps\/place\/([^/@]+)/);
+        if (nameM) placeName = decodeURIComponent(nameM[1].replace(/\+/g,' '));
+      }
+    }
+
+    // Extraer nombre del lugar de URL larga
+    if (!placeName) {
+      const nameM = raw.match(/maps\/place\/([^/@?]+)/);
+      if (nameM) placeName = decodeURIComponent(nameM[1].replace(/\+/g,' '));
+    }
+
+    if (!lat || !lon) {
+      // Último recurso: si el link tiene un nombre de lugar, geocodificar con Nominatim
+      if (placeName) {
+        setStatus('🔍 Buscando lugar por nombre...', true);
+        const r = await nominatim(placeName + ', Colombia');
+        if (r) { lat = parseFloat(r.lat); lon = parseFloat(r.lon); }
+      }
+    }
+
+    if (!lat || !lon) {
+      throw new Error(
+        'No se pudieron extraer coordenadas del link.\n' +
+        'Asegúrate de usar <b>"Compartir → Copiar enlace"</b> en Google Maps, ' +
+        'o prueba el modo <b>"Escribir dirección"</b>.'
+      );
+    }
+
+    destLat = lat; destLon = lon;
+    const label = placeName || `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+
+    // Obtener nombre del lugar con reverse geocoding (Nominatim es gratis)
+    const rev = await reverseGeocode(lat, lon);
+    const display = rev || label;
+
+    showDestOnMap(lat, lon, label);
+    setStatus('', false);
+
+    document.getElementById('confirm-name').textContent = '📌 ' + label;
+    document.getElementById('confirm-meta').innerHTML =
+      `<span style="color:#0f0">✅ Coordenadas exactas de Google Maps</span><br>` +
+      `<small style="color:#888">${display}</small>`;
+    document.getElementById('confirm-panel').style.display = 'block';
+
+  } catch(e) {
+    setStatus('❌ ' + e.message, true);
   }
-  if(userLat&&!userMarker)
-    userMarker=L.circleMarker([userLat,userLon],
-      {radius:8,color:'#0ff',fillColor:'#0ff',fillOpacity:0.9})
-      .addTo(map).bindPopup('Tu ubicación');
 }
-function showDestOnMap(lat,lon,name){
-  if(!map)initMap(lat,lon);
-  if(destMarker)destMarker.remove();
-  destMarker=L.marker([lat,lon]).addTo(map)
-    .bindPopup('<b>'+name+'</b>').openPopup();
-  const b=userLat
-    ?L.latLngBounds([[userLat,userLon],[lat,lon]])
-    :L.latLngBounds([[lat,lon],[lat+0.003,lon+0.003]]);
-  map.fitBounds(b,{padding:[30,30]});
+
+// Resolver link corto mediante proxy CORS
+async function resolveShortLink(url) {
+  // Usamos allorigins como proxy para seguir el redirect
+  try {
+    const proxy = 'https://api.allorigins.win/get?url=' + encodeURIComponent(url);
+    const r = await fetch(proxy);
+    const d = await r.json();
+    // allorigins devuelve la URL final en el header o en el contenido
+    if (d.status && d.status.url) return d.status.url;
+    // Intentar extraer de la respuesta HTML
+    const urlMatch = (d.contents || '').match(/href="(https:\/\/www\.google\.com\/maps[^"]+)"/);
+    if (urlMatch) return urlMatch[1];
+  } catch(e) { console.warn('Proxy falló:', e); }
+  return null;
 }
-function showRouteOnMap(coords){
-  if(routeLine)routeLine.remove();
-  routeLine=L.polyline(coords,{color:'#0ff',weight:4,opacity:0.8}).addTo(map);
-  map.fitBounds(routeLine.getBounds(),{padding:[20,20]});
+
+// Reverse geocoding con Nominatim (para mostrar dirección legible)
+async function reverseGeocode(lat, lon) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=es`;
+    const r = await fetch(url, { headers: {'Accept-Language':'es'} });
+    const d = await r.json();
+    return d.display_name || null;
+  } catch(e) { return null; }
 }
 
 // ════════════════════════════════════════════════════════════
-// ── GEOCODING — estrategia en cascada ───────────────────────
+// ── MODO 2: Escribir dirección (fallback Nominatim) ─────────
 // ════════════════════════════════════════════════════════════
-
-// Tabla de expansión de abreviaturas
 const VIA_MAP = {
-  'CRA':'Carrera','CR':'Carrera','KR':'Carrera','CRERA':'Carrera',
+  'CRA':'Carrera','CR':'Carrera','KR':'Carrera',
   'CLL':'Calle','CL':'Calle','CLLE':'Calle',
-  'AV':'Avenida','AVD':'Avenida','AVE':'Avenida',
-  'AK':'Avenida Carrera','AC':'Avenida Calle',
-  'TV':'Transversal','TRANS':'Transversal',
-  'DG':'Diagonal','DIAG':'Diagonal',
-  'CIR':'Circular','CIRC':'Circular',
+  'AV':'Avenida','AK':'Avenida Carrera','AC':'Avenida Calle',
+  'TV':'Transversal','DG':'Diagonal',
 };
 
-// Parsea "Cra 94G #85-91" →
-// { tipoVia:"Carrera", numVia:"94G", numCruce:"85", metros:91, label:"Carrera 94G #85-91" }
 function parseDir(raw) {
-  let s = raw.trim()
-    .replace(/\s+/g,' ')          // colapsar espacios múltiples
-    .replace(/nro\.?/gi,'#')      // "Nro" → "#"
-    .replace(/no\.?\s*/gi,'#');   // "No." → "#"
+  let s = raw.trim().replace(/\s+/g,' ')
+    .replace(/nro\.?/gi,'#').replace(/no\.?\s*/gi,'#');
+  s = s.replace(/^([A-Za-z.]+)(\s)/i, (_,a,sp) =>
+    (VIA_MAP[a.toUpperCase().replace(/\./g,'')] || a) + sp);
 
-  // Expandir abreviatura inicial
-  s = s.replace(/^([A-Za-z.]+)(\s)/i, (_, abbr, sp) => {
-    return (VIA_MAP[abbr.toUpperCase().replace(/\./g,'')] || abbr) + sp;
-  });
-
-  // Regex principal — captura:
-  //  grupo 1: tipo de vía (puede tener varias palabras, ej. "Avenida Carrera")
-  //  grupo 2: número de vía con letra opcional y "bis" opcional  ej. 94G, 10 Bis
-  //  grupo 3: número de cruce con letra opcional                 ej. 85, 15A
-  //  grupo 4: metros (el número después del guión)               ej. 91
   const re = /^((?:[A-Za-záéíóúÁÉÍÓÚ]+\s?){1,3})\s+(\d+\s?[A-Za-z]?(?:\s?[Bb][Ii][Ss])?)\s*#\s*(\d+[A-Za-z]?)\s*[-–]\s*(\d+)/i;
-  const m  = s.match(re);
-  if (m) {
-    const tipoVia  = m[1].trim();
-    const numVia   = m[2].trim().replace(/\s/g,'');   // "94 G" → "94G"
-    const numCruce = m[3].trim();
-    const metros   = parseInt(m[4]);
-    return {
-      tipoVia, numVia, numCruce, metros,
-      label: `${tipoVia} ${numVia} #${numCruce}-${metros}`,
-      parsed: true
-    };
-  }
+  const m = s.match(re);
+  if (m) return { tipoVia:m[1].trim(), numVia:m[2].trim().replace(/\s/g,''),
+    numCruce:m[3].trim(), metros:parseInt(m[4]),
+    label:`${m[1].trim()} ${m[2].trim()} #${m[3].trim()}-${m[4]}`, parsed:true };
 
-  // Sin metros — al menos tipo + numVia + # + cruce
   const re2 = /^((?:[A-Za-záéíóúÁÉÍÓÚ]+\s?){1,3})\s+(\d+\s?[A-Za-z]?)\s*#\s*(\d+[A-Za-z]?)/i;
-  const m2  = s.match(re2);
-  if (m2) {
-    return {
-      tipoVia: m2[1].trim(), numVia: m2[2].trim().replace(/\s/g,''),
-      numCruce: m2[3].trim(), metros: null,
-      label: `${m2[1].trim()} ${m2[2].trim()} #${m2[3].trim()}`,
-      parsed: true
-    };
-  }
+  const m2 = s.match(re2);
+  if (m2) return { tipoVia:m2[1].trim(), numVia:m2[2].trim().replace(/\s/g,''),
+    numCruce:m2[3].trim(), metros:null,
+    label:`${m2[1].trim()} ${m2[2].trim()} #${m2[3].trim()}`, parsed:true };
 
-  return { raw: s, label: s, parsed: false };
+  return { raw:s, label:s, parsed:false };
 }
 
-// Construye variantes de query para probar en orden
-function buildQueries(p, ciudad = 'Bogotá') {
-  if (!p.parsed) {
-    return [
-      `${p.raw}, ${ciudad}, Colombia`,
-      `${p.raw}, Colombia`,
-    ];
-  }
-
+function buildQueries(p, ciudad='Bogotá') {
+  if (!p.parsed) return [`${p.raw}, ${ciudad}, Colombia`, `${p.raw}, Colombia`];
   const { tipoVia, numVia, numCruce, metros } = p;
-  // El número de cruce base (sin letra) — usado en variantes sin letra
   const cruceBase = numCruce.replace(/[A-Za-z]/g,'');
-
-  const queries = [];
-
-  // ── Variante 1: dirección completa en formato OSM ────────
-  // Nominatim a veces entiende "Carrera 94G 85-91"
-  if (metros !== null) {
-    queries.push(`${tipoVia} ${numVia} ${numCruce}-${metros}, ${ciudad}, Colombia`);
-    queries.push(`${tipoVia} ${numVia} #${numCruce}-${metros}, ${ciudad}, Colombia`);
+  const qs = [];
+  if (metros) {
+    qs.push(`${tipoVia} ${numVia} ${numCruce}-${metros}, ${ciudad}, Colombia`);
+    qs.push(`${tipoVia} ${numVia} #${numCruce}-${metros}, ${ciudad}, Colombia`);
   }
-
-  // ── Variante 2: intersección con letra de cruce ──────────
-  queries.push(`${tipoVia} ${numVia} con ${numCruce}, ${ciudad}, Colombia`);
-  // ── Variante 3: intersección sin letra de cruce ──────────
+  qs.push(`${tipoVia} ${numVia} con ${numCruce}, ${ciudad}, Colombia`);
   if (cruceBase !== numCruce)
-    queries.push(`${tipoVia} ${numVia} con ${cruceBase}, ${ciudad}, Colombia`);
-
-  // ── Variante 4: solo tipo de vía + número ────────────────
-  queries.push(`${tipoVia} ${numVia}, ${ciudad}, Colombia`);
-
-  // ── Variante 5: sin especificar ciudad (más amplio) ──────
-  queries.push(`${tipoVia} ${numVia}, Colombia`);
-
-  return queries;
+    qs.push(`${tipoVia} ${numVia} con ${cruceBase}, ${ciudad}, Colombia`);
+  qs.push(`${tipoVia} ${numVia}, ${ciudad}, Colombia`);
+  return qs;
 }
 
-// Llama Nominatim
 async function nominatim(q) {
   const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=co&q='
     + encodeURIComponent(q);
@@ -284,311 +425,214 @@ async function nominatim(q) {
   return d.length ? d[0] : null;
 }
 
-// Llama Photon (geocoder alternativo sobre OSM, mejor cobertura urbana)
-async function photon(q) {
-  const url = 'https://photon.komoot.io/api/?limit=1&lang=es&q='
-    + encodeURIComponent(q + ' Bogotá Colombia');
-  const r = await fetch(url);
-  const d = await r.json();
-  if (d.features && d.features.length) {
-    const f = d.features[0];
-    return { lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0],
-             display: f.properties.name || q, source: 'Photon' };
-  }
-  return null;
-}
-
-// Geocodificación en cascada
-async function geocode(raw) {
-  const parsed = parseDir(raw);
-  const queries = buildQueries(parsed);
-
-  // ── Ronda 1: Nominatim con todas las variantes ───────────
-  for (const q of queries) {
-    console.log('[geocode] Nominatim →', q);
-    const r = await nominatim(q);
-    if (r) {
-      const precision = getPrecision(q, parsed);
-      return {
-        lat: parseFloat(r.lat), lon: parseFloat(r.lon),
-        label: parsed.label,
-        display: r.display_name,
-        precision,
-        source: 'Nominatim',
-        query: q
-      };
-    }
-  }
-
-  // ── Ronda 2: Photon con la dirección normalizada ─────────
-  console.log('[geocode] Intentando Photon...');
-  const ph = await photon(parsed.label || raw);
-  if (ph) {
-    return {
-      lat: ph.lat, lon: ph.lon,
-      label: parsed.label,
-      display: ph.display,
-      precision: 'aproximada',
-      source: 'Photon',
-      query: parsed.label
-    };
-  }
-
-  throw new Error(
-    `No se encontró "${parsed.label || raw}".\n` +
-    `Prueba: "Carrera 94 con Calle 85, Bogotá" o solo "Carrera 94G, Bogotá".`
-  );
-}
-
-// Clasifica qué tan preciso es el resultado según el query que funcionó
-function getPrecision(query, parsed) {
-  if (!parsed.parsed) return 'literal';
-  if (/\d+-\d+/.test(query)) return 'exacta';  // número completo tipo "94G 85-91"
-  if (/con\s+\d+[a-z]?/i.test(query) && parsed.numCruce && query.includes(parsed.numCruce))
-    return 'esquina exacta';
-  if (/con\s+\d+/i.test(query)) return 'esquina aprox.';
-  if (parsed.numVia && query.includes(parsed.numVia)) return 'vía principal';
-  return 'aproximada';
-}
-
-// ── searchDest — punto de entrada ───────────────────────────
-function expandirAbreviaturas(raw) {
-  const VIA = {
-    'CRA':'Carrera','CR':'Carrera','KR':'Carrera',
-    'CRA.':'Carrera','CR.':'Carrera','KR.':'Carrera',
-    'CLL':'Calle','CL':'Calle','CLLE':'Calle',
-    'CLL.':'Calle','CL.':'Calle',
-    'AV':'Avenida','AV.':'Avenida','AVE':'Avenida',
-    'AK':'Avenida Carrera','AC':'Avenida Calle',
-    'TV':'Transversal','TV.':'Transversal',
-    'DG':'Diagonal','DG.':'Diagonal',
-  };
-  return raw.trim().replace(/^([\w.]+)(\s|$)/i, (_, abbr, sep) => {
-    return (VIA[abbr.toUpperCase()] || abbr) + sep;
-  });
-}
-
-async function geocodePhoton(q) {
-  try {
-    // bbox cubre todo Colombia
-    const url = 'https://photon.komoot.io/api/?q='
-      + encodeURIComponent(q)
-      + '&limit=1&lang=es'
-      + '&bbox=-81.72,-4.23,-66.87,13.38';
-    const res  = await fetch(url);
-    const data = await res.json();
-    if (!data.features || !data.features.length) return null;
-    const f = data.features[0];
-    const p = f.properties;
-    const name = [p.name, p.street, p.housenumber, p.city]
-                   .filter(Boolean).join(', ') || q;
-    return {
-      lat:    f.geometry.coordinates[1],
-      lon:    f.geometry.coordinates[0],
-      name:   name,
-      type:   p.type || p.osm_value || '',
-      source: 'Photon'
-    };
-  } catch { return null; }
-}
-
-async function geocodeNominatim(q) {
-  try {
-    const url = 'https://nominatim.openstreetmap.org/search?q='
-      + encodeURIComponent(q)
-      + '&format=json&limit=1&countrycodes=co';
-    const res  = await fetch(url, { headers: { 'Accept-Language': 'es' } });
-    const data = await res.json();
-    if (!data.length) return null;
-    return {
-      lat:    parseFloat(data[0].lat),
-      lon:    parseFloat(data[0].lon),
-      name:   data[0].display_name,
-      type:   data[0].type,
-      source: 'Nominatim'
-    };
-  } catch { return null; }
-}
-
-async function searchDest() {
+async function searchText() {
   const raw = document.getElementById('dest-input').value.trim();
   if (!raw) { setStatus('⚠️ Escribe un destino', true); return; }
-
   hideConfirmPanel();
   setStatus('🔍 Buscando...', true);
 
-  const expanded = expandirAbreviaturas(raw);
-  const tieneCiudad = /bogot|medell|cali|barranq|cartagena|bucaramanga|pereira|cucuta|ibague|manizales/i.test(raw);
-  const ciudad = tieneCiudad ? '' : ', Bogotá, Colombia';
+  try {
+    const parsed = parseDir(raw);
+    const queries = buildQueries(parsed);
+    let result = null, usedQ = '';
+    for (const q of queries) {
+      const r = await nominatim(q);
+      if (r) { result = r; usedQ = q; break; }
+    }
+    if (!result) throw new Error('No se encontró. Prueba pegar un link de Google Maps.');
 
-  // Estrategias de búsqueda de más a menos específica
-  const queries = [
-    expanded + ciudad,                                      // 1. expandido + ciudad
-    raw + ciudad,                                           // 2. original + ciudad
-    expanded.replace(/\s*-\s*\d+\s*$/, '') + ciudad,       // 3. sin último número
-    expanded.replace(/\s*#.*$/, '') + ciudad,               // 4. solo vía principal
-  ];
+    destLat = parseFloat(result.lat);
+    destLon = parseFloat(result.lon);
+    const label = parsed.label || raw;
 
-  let result = null;
-
-  for (const q of queries) {
-    result = await geocodePhoton(q);       // Photon primero
-    if (result) { result.queryUsed = q; break; }
-
-    result = await geocodeNominatim(q);    // Nominatim como respaldo
-    if (result) { result.queryUsed = q; break; }
+    showDestOnMap(destLat, destLon, label);
+    setStatus('', false);
+    document.getElementById('confirm-name').textContent = '📌 ' + label;
+    document.getElementById('confirm-meta').innerHTML =
+      `<span style="color:#fa0">⚠️ Posición aproximada (Nominatim)</span><br>` +
+      `<small style="color:#888">Para mayor precisión usa el link de Google Maps</small>`;
+    document.getElementById('confirm-panel').style.display = 'block';
+  } catch(e) {
+    setStatus('❌ ' + e.message, true);
   }
-
-  if (!result) {
-    setStatus(
-      '❌ No se encontró la dirección.<br>'
-      + '<small style="color:#888">Prueba agregar la ciudad: "Cra 94G #85-91 Bogotá"</small>',
-      true
-    );
-    return;
-  }
-
-  destLat = result.lat;
-  destLon = result.lon;
-
-  const shortName = result.name.split(',').slice(0, 2).join(',');
-  const srcColor  = result.source === 'Photon' ? '#0f0' : '#ffa500';
-
-  showDestOnMap(destLat, destLon, shortName);
-  setStatus('', false);
-
-  document.getElementById('confirm-name').textContent = '📌 ' + shortName;
-  document.getElementById('confirm-addr').innerHTML =
-    `<small style="color:#aaa">${result.name.substring(0, 100)}${result.name.length > 100 ? '...' : ''}</small>`
-    + `<br><small style="color:${srcColor}">● ${result.source}</small>`;
-  document.getElementById('confirm-panel').style.display = 'block';
 }
 
-function hideConfirmPanel(){document.getElementById('confirm-panel').style.display='none';}
-function cancelSearch(){
+// ── Mapa ─────────────────────────────────────────────────────
+function initMap(lat, lon) {
+  document.getElementById('map').style.display = 'block';
+  if (!map) {
+    map = L.map('map').setView([lat, lon], 16);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      {attribution:'© OpenStreetMap'}).addTo(map);
+  }
+  if (userLat && !userMarker)
+    userMarker = L.circleMarker([userLat, userLon],
+      {radius:8, color:'#0ff', fillColor:'#0ff', fillOpacity:0.9})
+      .addTo(map).bindPopup('Tu ubicación');
+}
+function showDestOnMap(lat, lon, name) {
+  if (!map) initMap(lat, lon);
+  if (destMarker) destMarker.remove();
+  destMarker = L.marker([lat, lon]).addTo(map)
+    .bindPopup('<b>' + name + '</b>').openPopup();
+  const b = userLat
+    ? L.latLngBounds([[userLat,userLon],[lat,lon]])
+    : L.latLngBounds([[lat,lon],[lat+0.003,lon+0.003]]);
+  map.fitBounds(b, {padding:[30,30]});
+}
+function showRouteOnMap(coords) {
+  if (routeLine) routeLine.remove();
+  routeLine = L.polyline(coords, {color:'#0ff', weight:4, opacity:0.8}).addTo(map);
+  map.fitBounds(routeLine.getBounds(), {padding:[20,20]});
+}
+
+// ── Confirmación / cancelar ──────────────────────────────────
+function hideConfirmPanel() { document.getElementById('confirm-panel').style.display='none'; }
+function cancelDest() {
   hideConfirmPanel();
-  document.getElementById('dest-input').value='';
-  document.getElementById('dest-input').focus();
+  document.getElementById('link-input').value = '';
+  document.getElementById('dest-input').value = '';
 }
 
 // ── Calcular ruta ────────────────────────────────────────────
-async function startNav(){
-  if(!userLat){setStatus('⚠️ Esperando GPS...',true);return;}
+async function startNav() {
+  if (!userLat) { setStatus('⚠️ Esperando GPS...', true); return; }
   hideConfirmPanel();
-  setStatus('🛣️ Calculando ruta...',true);
-  try{
-    const url='https://router.project-osrm.org/route/v1/driving/'
-      +userLon+','+userLat+';'+destLon+','+destLat
-      +'?steps=true&geometries=geojson&overview=full';
-    const res=await fetch(url);
-    const data=await res.json();
-    if(data.code!=='Ok')throw new Error('Ruta no disponible');
-    const route=data.routes[0];
-    steps=[];
-    const mapCoords=[];
-    for(const c of route.geometry.coordinates)mapCoords.push([c[1],c[0]]);
+  setStatus('🛣️ Calculando ruta...', true);
+  try {
+    const url = 'https://router.project-osrm.org/route/v1/driving/'
+      + userLon+','+userLat+';'+destLon+','+destLat
+      + '?steps=true&geometries=geojson&overview=full';
+    const res  = await fetch(url);
+    const data = await res.json();
+    if (data.code !== 'Ok') throw new Error('Ruta no disponible');
+
+    const route = data.routes[0];
+    steps = [];
+    const mapCoords = [];
+    for (const c of route.geometry.coordinates) mapCoords.push([c[1], c[0]]);
     showRouteOnMap(mapCoords);
-    for(const leg of route.legs)
-      for(const step of leg.steps)
+
+    for (const leg of route.legs)
+      for (const step of leg.steps)
         steps.push({
-          maneuver:normalizeManeuver(step),
-          street:step.name||'Sin nombre',
-          distance:step.distance,
-          duration:step.duration,
-          location:step.maneuver.location
+          maneuver: normalizeManeuver(step),
+          street:   step.name || 'Sin nombre',
+          distance: step.distance,
+          duration: step.duration,
+          location: step.maneuver.location
         });
-    currentStep=0; navActive=true;
-    document.getElementById('stop-btn').style.display='inline-block';
-    document.getElementById('nav-panel').style.display='flex';
-    const totalDist=fmtDist(route.legs.reduce((a,l)=>a+l.distance,0));
-    const totalTime=fmtTime(route.legs.reduce((a,l)=>a+l.duration,0));
-    document.getElementById('dist-total').textContent=totalDist;
-    document.getElementById('eta-val').textContent=totalTime;
+
+    currentStep = 0; navActive = true;
+    document.getElementById('stop-btn').style.display  = 'block';
+    document.getElementById('nav-panel').style.display = 'flex';
+    document.getElementById('speed-badge').style.display = 'flex';
+
+    const totalDist = fmtDist(route.legs.reduce((a,l)=>a+l.distance,0));
+    const totalTime = fmtTime(route.legs.reduce((a,l)=>a+l.duration,0));
+    document.getElementById('dist-total').textContent = totalDist;
+    document.getElementById('eta-val').textContent    = totalTime;
+
     renderStepList();
-    showStep(0,'');
-    setStatus('✅ Navegando — '+totalDist+' · '+totalTime,true);
-  }catch(e){setStatus('❌ '+e.message,true);}
+    showStep(0);
+    setStatus('✅ Navegando — '+totalDist+' · '+totalTime, true);
+  } catch(e) { setStatus('❌ '+e.message, true); }
 }
 
 // ── Navegación ───────────────────────────────────────────────
-function normalizeManeuver(step){
-  const t=step.maneuver.type,m=step.maneuver.modifier||'';
+function normalizeManeuver(step) {
+  const t=step.maneuver.type, m=step.maneuver.modifier||'';
   if(t==='turn'){
-    if(m.includes('sharp')&&m.includes('left'))return'turn-sharp-left';
-    if(m.includes('sharp')&&m.includes('right'))return'turn-sharp-right';
-    if(m.includes('slight')&&m.includes('left'))return'turn-slight-left';
+    if(m.includes('sharp')&&m.includes('left'))  return'turn-sharp-left';
+    if(m.includes('sharp')&&m.includes('right')) return'turn-sharp-right';
+    if(m.includes('slight')&&m.includes('left')) return'turn-slight-left';
     if(m.includes('slight')&&m.includes('right'))return'turn-slight-right';
-    if(m.includes('left'))return'turn-left';
-    if(m.includes('right'))return'turn-right';
-    if(m.includes('uturn'))return'uturn';
+    if(m.includes('left'))  return'turn-left';
+    if(m.includes('right')) return'turn-right';
+    if(m.includes('uturn')) return'uturn';
   }
-  if(t==='rotary'||t==='roundabout')return'roundabout';
-  if(t==='depart')return'depart';
-  if(t==='arrive')return'arrive';
-  if(t==='merge')return'merge';
-  if(t.includes('exit'))return'exit';
+  if(t==='rotary'||t==='roundabout') return'roundabout';
+  if(t==='depart') return'depart';
+  if(t==='arrive') return'arrive';
+  if(t==='merge')  return'merge';
+  if(t.includes('exit')) return'exit';
   return'straight';
 }
-function fmtDist(m){return m>=1000?(m/1000).toFixed(1)+' km':Math.round(m)+' m';}
-function fmtTime(s){const m=Math.round(s/60);return m<60?m+' min':Math.floor(m/60)+'h '+(m%60)+'min';}
+
+function fmtDist(m){ return m>=1000?(m/1000).toFixed(1)+' km':Math.round(m)+' m'; }
+function fmtTime(s){ const m=Math.round(s/60); return m<60?m+' min':Math.floor(m/60)+'h '+(m%60)+'min'; }
 function haversine(la1,lo1,la2,lo2){
   const R=6371000,dLa=(la2-la1)*Math.PI/180,dLo=(lo2-lo1)*Math.PI/180;
   const a=Math.sin(dLa/2)**2+Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dLo/2)**2;
   return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
-function showStep(idx,speed){
-  if(idx>=steps.length)return;
-  const s=steps[idx];
-  document.getElementById('arrow-box').textContent=ARROWS[s.maneuver]||'⬆️';
-  document.getElementById('maneuver-text').textContent=MANEUVER_ES[s.maneuver]||'Continúa';
-  document.getElementById('distance-text').textContent=fmtDist(s.distance);
-  document.getElementById('street-name').textContent=s.street;
+
+function showStep(idx) {
+  if (idx >= steps.length) return;
+  const s = steps[idx];
+  const spdTxt = currentSpeed > 0 ? currentSpeed+' km/h' : '';
+  document.getElementById('arrow-box').textContent     = ARROWS[s.maneuver]||'⬆️';
+  document.getElementById('maneuver-text').textContent = MANEUVER_ES[s.maneuver]||'Continúa';
+  document.getElementById('distance-text').textContent = fmtDist(s.distance);
+  document.getElementById('street-name').textContent   = s.street;
   document.querySelectorAll('.step-item').forEach((el,i)=>
-    el.classList.toggle('active-step',i===idx));
-  sendToDisplay(s.maneuver,s.street,fmtDist(s.distance),speed,
+    el.classList.toggle('active-step', i===idx));
+  sendToDisplay(s.maneuver, s.street, fmtDist(s.distance), spdTxt,
     document.getElementById('eta-val').textContent);
 }
-function updateStep(speed){
-  if(!navActive||currentStep>=steps.length)return;
-  const s=steps[currentStep];
-  const dist=haversine(userLat,userLon,s.location[1],s.location[0]);
-  if(dist<25&&currentStep+1<steps.length){
-    currentStep++;renderStepList();showStep(currentStep,speed);
-  }else{
-    document.getElementById('distance-text').textContent=fmtDist(dist);
-    sendToDisplay(steps[currentStep].maneuver,steps[currentStep].street,
-      fmtDist(dist),speed,document.getElementById('eta-val').textContent);
+
+function updateStep() {
+  if (!navActive || currentStep >= steps.length) return;
+  const s    = steps[currentStep];
+  const dist = haversine(userLat, userLon, s.location[1], s.location[0]);
+
+  // Actualizar velocidad en display
+  const spdTxt = currentSpeed > 0 ? currentSpeed+' km/h' : '';
+  document.getElementById('speed-val').textContent = currentSpeed;
+
+  if (dist < 25 && currentStep+1 < steps.length) {
+    currentStep++;
+    renderStepList();
+    showStep(currentStep);
+  } else {
+    document.getElementById('distance-text').textContent = fmtDist(dist);
+    sendToDisplay(steps[currentStep].maneuver, steps[currentStep].street,
+      fmtDist(dist), spdTxt, document.getElementById('eta-val').textContent);
   }
 }
-function renderStepList(){
-  const el=document.getElementById('step-list');
-  el.innerHTML='';
-  steps.forEach((s,i)=>{
-    const d=document.createElement('div');
-    d.className='step-item'+(i===currentStep?' active-step':'');
-    d.innerHTML=`<span style="font-size:1.3rem">${ARROWS[s.maneuver]||'⬆️'}</span>
-                 <span class="step-dist">${fmtDist(s.distance)}</span>
-                 <span>${s.street||'Sin nombre'}</span>`;
+
+function renderStepList() {
+  const el = document.getElementById('step-list');
+  el.innerHTML = '';
+  steps.forEach((s,i) => {
+    const d = document.createElement('div');
+    d.className = 'step-item'+(i===currentStep?' active-step':'');
+    d.innerHTML = `<span style="font-size:1.3rem">${ARROWS[s.maneuver]||'⬆️'}</span>
+                   <span class="step-dist">${fmtDist(s.distance)}</span>
+                   <span>${s.street||'Sin nombre'}</span>`;
     el.appendChild(d);
   });
 }
-async function stopNav(){
-  navActive=false;steps=[];currentStep=0;
-  document.getElementById('nav-panel').style.display='none';
-  document.getElementById('stop-btn').style.display='none';
-  document.getElementById('step-list').innerHTML='';
-  if(routeLine){routeLine.remove();routeLine=null;}
-  setStatus('⏹️ Navegación detenida',true);
-  if(ws&&ws.readyState===WebSocket.OPEN)
+
+async function stopNav() {
+  navActive=false; steps=[]; currentStep=0;
+  document.getElementById('nav-panel').style.display  = 'none';
+  document.getElementById('stop-btn').style.display   = 'none';
+  document.getElementById('speed-badge').style.display= 'none';
+  document.getElementById('step-list').innerHTML = '';
+  if (routeLine){ routeLine.remove(); routeLine=null; }
+  setStatus('⏹️ Navegación detenida', true);
+  if (ws && ws.readyState===WebSocket.OPEN)
     ws.send(JSON.stringify({maneuver:'straight',street:'',distance:'',eta:'',speed:''}));
 }
-function setStatus(html,show){
-  const el=document.getElementById('status');
-  el.innerHTML=html;
-  el.style.display=(show&&html)?'block':'none';
+
+function setStatus(html, show) {
+  const el = document.getElementById('status');
+  el.innerHTML = html;
+  el.style.display = (show && html) ? 'block' : 'none';
 }
 
-window.onload=startGPS;
+window.onload = startGPS;
 </script>
 </body>
 </html>
