@@ -352,38 +352,116 @@ function getPrecision(query, parsed) {
 }
 
 // ── searchDest — punto de entrada ───────────────────────────
+function expandirAbreviaturas(raw) {
+  const VIA = {
+    'CRA':'Carrera','CR':'Carrera','KR':'Carrera',
+    'CRA.':'Carrera','CR.':'Carrera','KR.':'Carrera',
+    'CLL':'Calle','CL':'Calle','CLLE':'Calle',
+    'CLL.':'Calle','CL.':'Calle',
+    'AV':'Avenida','AV.':'Avenida','AVE':'Avenida',
+    'AK':'Avenida Carrera','AC':'Avenida Calle',
+    'TV':'Transversal','TV.':'Transversal',
+    'DG':'Diagonal','DG.':'Diagonal',
+  };
+  return raw.trim().replace(/^([\w.]+)(\s|$)/i, (_, abbr, sep) => {
+    return (VIA[abbr.toUpperCase()] || abbr) + sep;
+  });
+}
+
+async function geocodePhoton(q) {
+  try {
+    // bbox cubre todo Colombia
+    const url = 'https://photon.komoot.io/api/?q='
+      + encodeURIComponent(q)
+      + '&limit=1&lang=es'
+      + '&bbox=-81.72,-4.23,-66.87,13.38';
+    const res  = await fetch(url);
+    const data = await res.json();
+    if (!data.features || !data.features.length) return null;
+    const f = data.features[0];
+    const p = f.properties;
+    const name = [p.name, p.street, p.housenumber, p.city]
+                   .filter(Boolean).join(', ') || q;
+    return {
+      lat:    f.geometry.coordinates[1],
+      lon:    f.geometry.coordinates[0],
+      name:   name,
+      type:   p.type || p.osm_value || '',
+      source: 'Photon'
+    };
+  } catch { return null; }
+}
+
+async function geocodeNominatim(q) {
+  try {
+    const url = 'https://nominatim.openstreetmap.org/search?q='
+      + encodeURIComponent(q)
+      + '&format=json&limit=1&countrycodes=co';
+    const res  = await fetch(url, { headers: { 'Accept-Language': 'es' } });
+    const data = await res.json();
+    if (!data.length) return null;
+    return {
+      lat:    parseFloat(data[0].lat),
+      lon:    parseFloat(data[0].lon),
+      name:   data[0].display_name,
+      type:   data[0].type,
+      source: 'Nominatim'
+    };
+  } catch { return null; }
+}
+
 async function searchDest() {
   const raw = document.getElementById('dest-input').value.trim();
   if (!raw) { setStatus('⚠️ Escribe un destino', true); return; }
 
   hideConfirmPanel();
-  setStatus('🔍 Buscando dirección...', true);
+  setStatus('🔍 Buscando...', true);
 
-  try {
-    const result = await geocode(raw);
-    destLat = result.lat;
-    destLon = result.lon;
+  const expanded = expandirAbreviaturas(raw);
+  const tieneCiudad = /bogot|medell|cali|barranq|cartagena|bucaramanga|pereira|cucuta|ibague|manizales/i.test(raw);
+  const ciudad = tieneCiudad ? '' : ', Bogotá, Colombia';
 
-    const precColor = {
-      'exacta':'#0f0', 'esquina exacta':'#0f0',
-      'esquina aprox.':'#fa0', 'vía principal':'#fa0',
-      'aproximada':'#f80', 'literal':'#aaa'
-    }[result.precision] || '#aaa';
+  // Estrategias de búsqueda de más a menos específica
+  const queries = [
+    expanded + ciudad,                                      // 1. expandido + ciudad
+    raw + ciudad,                                           // 2. original + ciudad
+    expanded.replace(/\s*-\s*\d+\s*$/, '') + ciudad,       // 3. sin último número
+    expanded.replace(/\s*#.*$/, '') + ciudad,               // 4. solo vía principal
+  ];
 
-    const metaHtml =
-      `<span style="color:${precColor}">📌 Precisión: ${result.precision} · ${result.source}</span>` +
-      `<br>${result.display ? result.display.substring(0,90)+'...' : ''}`;
+  let result = null;
 
-    showDestOnMap(destLat, destLon, result.label);
-    setStatus('', false);
+  for (const q of queries) {
+    result = await geocodePhoton(q);       // Photon primero
+    if (result) { result.queryUsed = q; break; }
 
-    document.getElementById('confirm-name').textContent = '🏁 ' + result.label;
-    document.getElementById('confirm-meta').innerHTML   = metaHtml;
-    document.getElementById('confirm-panel').style.display = 'block';
-
-  } catch(e) {
-    setStatus('❌ ' + e.message.replace(/\n/g,'<br>'), true);
+    result = await geocodeNominatim(q);    // Nominatim como respaldo
+    if (result) { result.queryUsed = q; break; }
   }
+
+  if (!result) {
+    setStatus(
+      '❌ No se encontró la dirección.<br>'
+      + '<small style="color:#888">Prueba agregar la ciudad: "Cra 94G #85-91 Bogotá"</small>',
+      true
+    );
+    return;
+  }
+
+  destLat = result.lat;
+  destLon = result.lon;
+
+  const shortName = result.name.split(',').slice(0, 2).join(',');
+  const srcColor  = result.source === 'Photon' ? '#0f0' : '#ffa500';
+
+  showDestOnMap(destLat, destLon, shortName);
+  setStatus('', false);
+
+  document.getElementById('confirm-name').textContent = '📌 ' + shortName;
+  document.getElementById('confirm-addr').innerHTML =
+    `<small style="color:#aaa">${result.name.substring(0, 100)}${result.name.length > 100 ? '...' : ''}</small>`
+    + `<br><small style="color:${srcColor}">● ${result.source}</small>`;
+  document.getElementById('confirm-panel').style.display = 'block';
 }
 
 function hideConfirmPanel(){document.getElementById('confirm-panel').style.display='none';}
